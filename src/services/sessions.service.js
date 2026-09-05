@@ -1,5 +1,6 @@
 import pool from "../db/pool.js";
 import { AppError } from "../utils/AppError.js";
+import { estimateMinutes } from "../utils/drillTiming.js";
 
 async function getPlayerId(userId) {
   const result = await pool.query("SELECT id FROM players WHERE user_id = $1", [userId]);
@@ -9,12 +10,8 @@ async function getPlayerId(userId) {
   return result.rows[0].id;
 }
 
-// Same formula the frontend's session builder uses (see
-// frontend/src/hooks/useSessionBuilder.js drillMinutes) so displayed times
-// match once the frontend is wired to this API.
 function drillMinutes(drillRow, sets, reps) {
-  const seconds = drillRow.unit_kind === "secs" ? sets * (reps + 60) : sets * drillRow.seconds_per_set;
-  return Math.max(1, Math.round(seconds / 60));
+  return estimateMinutes(drillRow.unit_kind, sets, reps, drillRow.seconds_per_set);
 }
 
 function validateDrillSelections(drills) {
