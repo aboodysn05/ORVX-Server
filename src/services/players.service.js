@@ -128,6 +128,33 @@ export async function submitAssessment(userId, input) {
   }
 }
 
+// Public — powers the Hero page's illustrative player card. The "featured"
+// player is just whoever completed their assessment most recently; there's
+// no ranking/curation logic. Returns null (not a 404) when no player has
+// completed the assessment yet, since that's a normal, expected state for a
+// public marketing page, not an error.
+export async function getFeaturedPlayer() {
+  const playerResult = await pool.query(
+    `SELECT players.*, users.name AS user_name
+     FROM players
+     JOIN users ON users.id = players.user_id
+     ORDER BY players.created_at DESC
+     LIMIT 1`,
+  );
+  const player = playerResult.rows[0];
+  if (!player) return null;
+
+  const attributeRows = await pool.query(
+    `SELECT attributes.code, player_attributes.value
+     FROM player_attributes
+     JOIN attributes ON attributes.id = player_attributes.attribute_id
+     WHERE player_attributes.player_id = $1`,
+    [player.id],
+  );
+
+  return { name: player.user_name, ...toPublicProfile(player, attributeRows.rows) };
+}
+
 export async function getProfileByUserId(userId) {
   const playerResult = await pool.query("SELECT * FROM players WHERE user_id = $1", [userId]);
   const player = playerResult.rows[0];

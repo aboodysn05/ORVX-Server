@@ -26,3 +26,8 @@ export async function meController(req, res) {
   const player = await playersService.getProfileByUserId(req.user.id);
   res.json({ player });
 }
+
+export async function featuredController(req, res) {
+  const player = await playersService.getFeaturedPlayer();
+  res.json({ player });
+}
