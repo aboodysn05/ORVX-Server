@@ -9,7 +9,8 @@
     "start": "node src/server.js",
     "migrate": "node src/db/migrate.js",
     "seed:admin": "node src/scripts/seedAdmin.js",
-    "seed:evaluator": "node src/scripts/seedEvaluator.js"
+    "seed:evaluator": "node src/scripts/seedEvaluator.js",
+    "seed:demo": "node src/scripts/seedDemo.js"
   },
   "keywords": [],
   "author": "",
