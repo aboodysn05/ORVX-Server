@@ -1,26 +1,9 @@
 import pool from "../db/pool.js";
 import { AppError } from "../utils/AppError.js";
+import { keysFor, tierFor, computeOverall } from "../utils/playerRating.js";
 
 const POSITIONS = ["Attacker", "Defender", "Goalkeeper"];
 const FEET = ["Left", "Right", "Both"];
-
-// Keys match what the assessment wizard sends (see
-// frontend/src/hooks/usePlayerAssessment.js buildPayload) and the `code`
-// column of the attributes catalog table.
-const OUTFIELD_KEYS = ["pace", "shooting", "passing", "dribbling", "defending", "physical"];
-const GK_KEYS = ["diving", "handling", "kicking", "reflexes", "speed", "positioning"];
-
-function keysFor(position) {
-  return position === "Goalkeeper" ? GK_KEYS : OUTFIELD_KEYS;
-}
-
-// Same thresholds as the frontend's tierFor() — kept here too because the
-// server recomputes overall/tier itself rather than trusting client values.
-function tierFor(overall) {
-  if (overall >= 75) return "Gold";
-  if (overall >= 65) return "Silver";
-  return "Bronze";
-}
 
 function validateAssessmentInput({ position, dominantFoot, heightCm, weightKg, attributes }) {
   if (!POSITIONS.includes(position)) {
@@ -80,7 +63,7 @@ export async function submitAssessment(userId, input) {
   const keys = keysFor(position);
   // Recomputed server-side, never trusted from the client, so a player can't
   // just POST a high overall/tier alongside low attribute values.
-  const overall = Math.round(keys.reduce((sum, key) => sum + attributes[key], 0) / keys.length);
+  const overall = computeOverall(position, attributes);
   const tier = tierFor(overall);
 
   const client = await pool.connect();
@@ -159,6 +142,7 @@ export async function getProfileByUserId(userId) {
   const playerResult = await pool.query("SELECT * FROM players WHERE user_id = $1", [userId]);
   const player = playerResult.rows[0];
   if (!player) {
+    // The "unassessed" lifecycle state — the frontend redirects to /assessment.
     throw new AppError("No player profile yet — complete the assessment first.", 404, "PLAYER_NOT_FOUND");
   }
 
@@ -170,5 +154,64 @@ export async function getProfileByUserId(userId) {
     [player.id],
   );
 
-  return toPublicProfile(player, attributeRows.rows);
+  const approvedResult = await pool.query(
+    "SELECT count(*)::int AS n FROM drill_submissions WHERE player_id = $1 AND review_status = 'approved'",
+    [player.id],
+  );
+  const approvedCount = approvedResult.rows[0].n;
+
+  const membershipResult = await pool.query(
+    `SELECT cl.id, cl.name
+     FROM club_memberships m
+     JOIN clubs cl ON cl.id = m.club_id
+     WHERE m.player_id = $1 AND m.active`,
+    [player.id],
+  );
+  const membership = membershipResult.rows[0] || null;
+
+  const lifecycleState = membership
+    ? "signed"
+    : approvedCount > 0
+      ? "released"
+      : "baseline_pending";
+
+  return {
+    ...toPublicProfile(player, attributeRows.rows),
+    lifecycleState,
+    baselineApproved: approvedCount > 0,
+    approvedSubmissions: approvedCount,
+    club: membership ? { id: membership.id, name: membership.name } : null,
+  };
+}
+
+// Recomputes players.overall / tier from the current player_attributes rows.
+// Called from inside a transaction (pass its client) whenever a review credits
+// XP — the same "never store what can be derived" rule the assessment follows.
+export async function recomputeRating(client, playerId) {
+  const playerResult = await client.query("SELECT position FROM players WHERE id = $1", [playerId]);
+  const player = playerResult.rows[0];
+  if (!player) {
+    throw new AppError("Player not found.", 404, "PLAYER_NOT_FOUND");
+  }
+
+  const attributeRows = await client.query(
+    `SELECT attributes.code, player_attributes.value
+     FROM player_attributes
+     JOIN attributes ON attributes.id = player_attributes.attribute_id
+     WHERE player_attributes.player_id = $1`,
+    [playerId],
+  );
+  const attrMap = {};
+  for (const row of attributeRows.rows) {
+    attrMap[row.code] = row.value;
+  }
+
+  const overall = computeOverall(player.position, attrMap);
+  const tier = tierFor(overall);
+  await client.query("UPDATE players SET overall = $1, tier = $2 WHERE id = $3", [
+    overall,
+    tier,
+    playerId,
+  ]);
+  return { overall, tier };
 }
