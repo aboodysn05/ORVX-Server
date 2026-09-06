@@ -16,6 +16,6 @@ export async function getFixturesController(req, res) {
 }
 
 export async function getBracketController(req, res) {
-  const bracket = await competitionsService.getBracket(Number(req.params.id));
-  res.json(bracket);
+  const rounds = await competitionsService.getBracket(Number(req.params.id));
+  res.json({ rounds });
 }

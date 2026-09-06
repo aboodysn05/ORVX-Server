@@ -14,6 +14,220 @@ export async function listCompetitions() {
   return result.rows;
 }
 
+const COMPETITION_TYPES = ["league", "knockout"];
+
+export async function createCompetition({ name, type, season }) {
+  if (!name || !name.trim()) {
+    throw new AppError("Competition name is required.", 400, "VALIDATION_ERROR");
+  }
+  if (!COMPETITION_TYPES.includes(type)) {
+    throw new AppError(`type must be one of: ${COMPETITION_TYPES.join(", ")}.`, 400, "VALIDATION_ERROR");
+  }
+  if (!season || !season.trim()) {
+    throw new AppError("season is required.", 400, "VALIDATION_ERROR");
+  }
+  const result = await pool.query(
+    `INSERT INTO competitions (name, type, season) VALUES ($1, $2, $3)
+     RETURNING id, name, type, season`,
+    [name.trim(), type, season.trim()],
+  );
+  return result.rows[0];
+}
+
+async function loadMatchGoals(client, matchId) {
+  const result = await client.query(
+    "SELECT club_id, scorer_name, minute FROM match_goals WHERE match_id = $1 ORDER BY minute NULLS LAST, id",
+    [matchId],
+  );
+  return result.rows.map((r) => ({ clubId: r.club_id, scorerName: r.scorer_name, minute: r.minute }));
+}
+
+async function toPublicMatch(client, matchRow) {
+  const goals = await loadMatchGoals(client, matchRow.id);
+  return {
+    id: matchRow.id,
+    competitionId: matchRow.competition_id,
+    round: matchRow.round_label,
+    leg: matchRow.leg,
+    homeClubId: matchRow.home_club_id,
+    awayClubId: matchRow.away_club_id,
+    homeScore: matchRow.home_score,
+    awayScore: matchRow.away_score,
+    status: matchRow.status,
+    scheduledAt: matchRow.scheduled_at,
+    goals,
+  };
+}
+
+function validateGoals(goals, { homeClubId, awayClubId, homeScore, awayScore }) {
+  if (goals == null) return;
+  if (!Array.isArray(goals)) {
+    throw new AppError("goals must be an array.", 400, "VALIDATION_ERROR");
+  }
+  let homeGoals = 0;
+  let awayGoals = 0;
+  for (const g of goals) {
+    if (!g || (g.clubId !== homeClubId && g.clubId !== awayClubId)) {
+      throw new AppError("Each goal's clubId must be the home or away club.", 400, "VALIDATION_ERROR");
+    }
+    if (typeof g.scorerName !== "string" || !g.scorerName.trim()) {
+      throw new AppError("Each goal needs a scorerName.", 400, "VALIDATION_ERROR");
+    }
+    if (g.minute != null && (!Number.isInteger(g.minute) || g.minute < 1 || g.minute > 130)) {
+      throw new AppError("A goal's minute must be a whole number between 1 and 130.", 400, "VALIDATION_ERROR");
+    }
+    if (g.clubId === homeClubId) homeGoals++;
+    else awayGoals++;
+  }
+  if (homeGoals !== homeScore || awayGoals !== awayScore) {
+    throw new AppError(
+      "The number of goals for each club must match its score.",
+      400,
+      "GOAL_COUNT_MISMATCH",
+    );
+  }
+}
+
+async function writeGoals(client, matchId, goals) {
+  await client.query("DELETE FROM match_goals WHERE match_id = $1", [matchId]);
+  for (const g of goals || []) {
+    await client.query(
+      "INSERT INTO match_goals (match_id, club_id, scorer_name, minute) VALUES ($1, $2, $3, $4)",
+      [matchId, g.clubId, g.scorerName.trim(), g.minute ?? null],
+    );
+  }
+}
+
+export async function createMatch(competitionId, payload) {
+  const competition = await getCompetition(competitionId);
+  const {
+    homeClubId,
+    awayClubId,
+    roundLabel = null,
+    leg = null,
+    homeScore,
+    awayScore,
+    playedOn,
+    goals = null,
+  } = payload;
+
+  if (!Number.isInteger(homeClubId) || !Number.isInteger(awayClubId)) {
+    throw new AppError("homeClubId and awayClubId are required.", 400, "VALIDATION_ERROR");
+  }
+  if (homeClubId === awayClubId) {
+    throw new AppError("A club cannot play itself.", 400, "SAME_CLUB");
+  }
+  if (!Number.isInteger(homeScore) || homeScore < 0 || !Number.isInteger(awayScore) || awayScore < 0) {
+    throw new AppError("Scores must be whole numbers of 0 or more.", 400, "VALIDATION_ERROR");
+  }
+  if (competition.type === "knockout") {
+    if (leg != null && leg !== 1 && leg !== 2) {
+      throw new AppError("leg must be 1 or 2 for a knockout match.", 400, "VALIDATION_ERROR");
+    }
+  } else if (leg != null) {
+    throw new AppError("leg only applies to knockout matches.", 400, "VALIDATION_ERROR");
+  }
+  const playedAt = playedOn ? new Date(playedOn) : new Date();
+  if (Number.isNaN(playedAt.getTime())) {
+    throw new AppError("playedOn must be a valid date.", 400, "VALIDATION_ERROR");
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const clubCheck = await client.query("SELECT id FROM clubs WHERE id = ANY($1::int[])", [
+      [homeClubId, awayClubId],
+    ]);
+    if (clubCheck.rows.length !== 2) {
+      throw new AppError("One or both clubs do not exist.", 400, "CLUB_NOT_FOUND");
+    }
+    validateGoals(goals, { homeClubId, awayClubId, homeScore, awayScore });
+
+    const inserted = await client.query(
+      `INSERT INTO matches
+         (competition_id, round_label, leg, home_club_id, away_club_id, home_score, away_score, status, scheduled_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, 'played', $8)
+       RETURNING *`,
+      [competitionId, roundLabel, leg, homeClubId, awayClubId, homeScore, awayScore, playedAt.toISOString()],
+    );
+    const match = inserted.rows[0];
+    await writeGoals(client, match.id, goals);
+    const publicMatch = await toPublicMatch(client, match);
+    await client.query("COMMIT");
+    return publicMatch;
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+export async function updateMatch(matchId, patch) {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const existing = await client.query("SELECT * FROM matches WHERE id = $1 FOR UPDATE", [matchId]);
+    const match = existing.rows[0];
+    if (!match) {
+      throw new AppError("Match not found.", 404, "MATCH_NOT_FOUND");
+    }
+
+    const homeScore = patch.homeScore ?? match.home_score;
+    const awayScore = patch.awayScore ?? match.away_score;
+    if (!Number.isInteger(homeScore) || homeScore < 0 || !Number.isInteger(awayScore) || awayScore < 0) {
+      throw new AppError("Scores must be whole numbers of 0 or more.", 400, "VALIDATION_ERROR");
+    }
+    const roundLabel = patch.roundLabel !== undefined ? patch.roundLabel : match.round_label;
+    let leg = patch.leg !== undefined ? patch.leg : match.leg;
+    if (leg != null && leg !== 1 && leg !== 2) {
+      throw new AppError("leg must be 1 or 2.", 400, "VALIDATION_ERROR");
+    }
+    let scheduledAt = match.scheduled_at;
+    if (patch.playedOn !== undefined) {
+      const d = new Date(patch.playedOn);
+      if (Number.isNaN(d.getTime())) {
+        throw new AppError("playedOn must be a valid date.", 400, "VALIDATION_ERROR");
+      }
+      scheduledAt = d.toISOString();
+    }
+
+    await client.query(
+      `UPDATE matches
+       SET home_score = $1, away_score = $2, round_label = $3, leg = $4, scheduled_at = $5, status = 'played'
+       WHERE id = $6`,
+      [homeScore, awayScore, roundLabel, leg, scheduledAt, matchId],
+    );
+
+    if (patch.goals !== undefined) {
+      validateGoals(patch.goals, {
+        homeClubId: match.home_club_id,
+        awayClubId: match.away_club_id,
+        homeScore,
+        awayScore,
+      });
+      await writeGoals(client, matchId, patch.goals);
+    }
+
+    const refreshed = await client.query("SELECT * FROM matches WHERE id = $1", [matchId]);
+    const publicMatch = await toPublicMatch(client, refreshed.rows[0]);
+    await client.query("COMMIT");
+    return publicMatch;
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+export async function deleteMatch(matchId) {
+  const result = await pool.query("DELETE FROM matches WHERE id = $1 RETURNING id", [matchId]);
+  if (result.rows.length === 0) {
+    throw new AppError("Match not found.", 404, "MATCH_NOT_FOUND");
+  }
+}
+
 // Standings are never stored — always computed from played fixtures, the
 // same principle as a player's "approved sessions" count never being a
 // stored column (see players.service.js's docs elsewhere in this codebase).
@@ -27,10 +241,10 @@ export async function getStandings(competitionId) {
     `
     WITH participations AS (
       SELECT f.scheduled_at, f.home_club_id AS club_id, f.home_score AS gf, f.away_score AS ga
-      FROM fixtures f WHERE f.competition_id = $1 AND f.status = 'played'
+      FROM matches f WHERE f.competition_id = $1 AND f.status = 'played'
       UNION ALL
       SELECT f.scheduled_at, f.away_club_id, f.away_score, f.home_score
-      FROM fixtures f WHERE f.competition_id = $1 AND f.status = 'played'
+      FROM matches f WHERE f.competition_id = $1 AND f.status = 'played'
     ),
     totals AS (
       SELECT
@@ -84,9 +298,10 @@ export async function getFixtures(competitionId) {
   await getCompetition(competitionId);
   const result = await pool.query(
     `
-    SELECT f.id, f.round_label, f.leg, f.home_score, f.away_score, f.status, f.scheduled_at,
+    SELECT f.id, f.round_label, f.leg, f.home_club_id, f.away_club_id,
+      f.home_score, f.away_score, f.status, f.scheduled_at,
       hc.name AS home_name, ac.name AS away_name
-    FROM fixtures f
+    FROM matches f
     JOIN clubs hc ON hc.id = f.home_club_id
     JOIN clubs ac ON ac.id = f.away_club_id
     WHERE f.competition_id = $1
@@ -94,16 +309,34 @@ export async function getFixtures(competitionId) {
     `,
     [competitionId],
   );
+
+  const ids = result.rows.map((r) => r.id);
+  const goalsByMatch = new Map();
+  if (ids.length > 0) {
+    const goalRows = await pool.query(
+      `SELECT match_id, club_id, scorer_name, minute FROM match_goals
+       WHERE match_id = ANY($1::int[]) ORDER BY minute NULLS LAST, id`,
+      [ids],
+    );
+    for (const g of goalRows.rows) {
+      if (!goalsByMatch.has(g.match_id)) goalsByMatch.set(g.match_id, []);
+      goalsByMatch.get(g.match_id).push({ clubId: g.club_id, scorerName: g.scorer_name, minute: g.minute });
+    }
+  }
+
   return result.rows.map((row) => ({
     id: row.id,
     round: row.round_label,
     leg: row.leg,
     home: row.home_name,
     away: row.away_name,
+    homeClubId: row.home_club_id,
+    awayClubId: row.away_club_id,
     homeScore: row.home_score,
     awayScore: row.away_score,
     status: row.status,
     scheduledAt: row.scheduled_at,
+    goals: goalsByMatch.get(row.id) || [],
   }));
 }
 
@@ -121,7 +354,7 @@ export async function getBracket(competitionId) {
     `
     SELECT f.round_label, f.leg, f.home_score, f.away_score, f.status, f.scheduled_at,
       hc.id AS home_id, hc.name AS home_name, ac.id AS away_id, ac.name AS away_name
-    FROM fixtures f
+    FROM matches f
     JOIN clubs hc ON hc.id = f.home_club_id
     JOIN clubs ac ON ac.id = f.away_club_id
     WHERE f.competition_id = $1
@@ -187,5 +420,7 @@ export async function getBracket(competitionId) {
     }),
   }));
 
-  return { rounds };
+  // Return the array; the controller wraps it as `{ rounds }` (the shape the
+  // Leagues page already reads).
+  return rounds;
 }

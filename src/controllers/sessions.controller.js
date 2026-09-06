@@ -29,7 +29,7 @@ export async function discardSessionController(req, res) {
 }
 
 export async function submitSessionController(req, res) {
-  const { videoUrl, notes, reviewerName } = req.body;
+  const { videoUrl, notes, reviewerName, reviewerCoachId } = req.body;
   if (!videoUrl) {
     throw new AppError("videoUrl is required.", 400, "VALIDATION_ERROR");
   }
@@ -37,6 +37,7 @@ export async function submitSessionController(req, res) {
     videoUrl,
     notes,
     reviewerName,
+    reviewerCoachId,
   });
   res.json({ session });
 }
