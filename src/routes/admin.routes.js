@@ -27,11 +27,15 @@ import {
   archiveController as archiveClubController,
   restoreController as restoreClubController,
 } from "../controllers/adminClubs.controller.js";
+import { getAdminOverviewController } from "../controllers/adminOverview.controller.js";
 
 const router = Router();
 
 // Every admin-console endpoint lives here, behind an admin-role gate.
 router.use(requireAuth, attachCurrentUser, requireRole("admin"));
+
+// --- console landing aggregate ---
+router.get("/overview", getAdminOverviewController);
 
 // --- coach onboarding queue (Phase 3) ---
 router.get("/coach-applications", listCoachApplicationsController);
