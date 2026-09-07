@@ -2,7 +2,10 @@ import { Router } from "express";
 import { requireAuth } from "../middleware/auth.js";
 import { requireRole } from "../middleware/requireRole.js";
 import { attachCurrentUser } from "../middleware/loadUser.js";
-import { listClubsController } from "../controllers/clubs.controller.js";
+import {
+  listClubsController,
+  getClubOverviewController,
+} from "../controllers/clubs.controller.js";
 import {
   getRosterController,
   signPlayerController,
@@ -21,6 +24,9 @@ const router = Router();
 // Public — club names/crests aren't sensitive, and the pages that show them
 // (Hero stats, Leagues standings) have no login wall.
 router.get("/", listClubsController);
+
+// Aggregate for the Coach Club Profile page.
+router.get("/:id/overview", requireAuth, attachCurrentUser, getClubOverviewController);
 
 // --- roster (Phase 4) ---
 router.get("/:id/roster", requireAuth, attachCurrentUser, getRosterController);
