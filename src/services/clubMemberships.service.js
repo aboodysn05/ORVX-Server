@@ -1,6 +1,7 @@
 import pool from "../db/pool.js";
 import { AppError } from "../utils/AppError.js";
 import { SQUAD_CAP } from "../utils/constants.js";
+import { keysFor } from "../utils/playerRating.js";
 
 // Club rosters and player-to-club applications. A "released" free agent (>= 1
 // approved drill submission, not on a roster) can be signed by a club head
@@ -51,15 +52,20 @@ export async function playerLifecycle(client, playerId) {
 
 async function attributesByPlayer(client, playerIds) {
   if (playerIds.length === 0) return new Map();
+  // Players can carry both attribute sets (see players.service's
+  // non-destructive position swap) — only expose the six their current
+  // position uses.
   const result = await client.query(
-    `SELECT pa.player_id, a.code, pa.value
+    `SELECT pa.player_id, a.code, pa.value, p.position
      FROM player_attributes pa
      JOIN attributes a ON a.id = pa.attribute_id
+     JOIN players p ON p.id = pa.player_id
      WHERE pa.player_id = ANY($1::int[])`,
     [playerIds],
   );
   const map = new Map();
   for (const row of result.rows) {
+    if (!keysFor(row.position).includes(row.code)) continue;
     if (!map.has(row.player_id)) map.set(row.player_id, {});
     map.get(row.player_id)[row.code] = row.value;
   }

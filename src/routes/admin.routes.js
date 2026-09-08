@@ -16,9 +16,7 @@ import {
   reinstateController as reinstateDrillController,
 } from "../controllers/adminDrills.controller.js";
 import {
-  createCompetitionController,
   updateCompetitionController,
-  deleteCompetitionController,
   generateLeagueFixturesController,
   generateKnockoutBracketController,
   advanceKnockoutController,
@@ -56,9 +54,7 @@ router.post("/drills/:id/retire", retireDrillController);
 router.post("/drills/:id/reinstate", reinstateDrillController);
 
 // --- competition engine (Phase 6) ---
-router.post("/competitions", createCompetitionController);
 router.patch("/competitions/:id", updateCompetitionController);
-router.delete("/competitions/:id", deleteCompetitionController);
 router.post("/competitions/:id/fixtures/generate", generateLeagueFixturesController);
 router.post("/competitions/:id/bracket/generate", generateKnockoutBracketController);
 router.post("/competitions/:id/bracket/advance", advanceKnockoutController);

@@ -14,31 +14,56 @@ export async function listCompetitions() {
   return result.rows;
 }
 
-const COMPETITION_TYPES = ["league", "knockout"];
+// The platform runs exactly two competitions, created by migration 006: one
+// round-robin league and one knockout cup. Admins shape them (fixtures,
+// results, rounds) but cannot add or remove competitions.
+export const LEAGUE_MATCHDAYS = 16;
+export const CUP_ROUNDS = ["Semi-Finals", "Final"];
+export const CUP_CLUBS = 4;
 
-export async function createCompetition({ name, type, season }) {
-  if (!name || !name.trim()) {
-    throw new AppError("Competition name is required.", 400, "VALIDATION_ERROR");
-  }
-  if (!COMPETITION_TYPES.includes(type)) {
-    throw new AppError(`type must be one of: ${COMPETITION_TYPES.join(", ")}.`, 400, "VALIDATION_ERROR");
-  }
-  if (!season || !season.trim()) {
-    throw new AppError("season is required.", 400, "VALIDATION_ERROR");
-  }
-  const result = await pool.query(
-    `INSERT INTO competitions (name, type, season) VALUES ($1, $2, $3)
-     RETURNING id, name, type, season`,
-    [name.trim(), type, season.trim()],
-  );
-  return result.rows[0];
+export function leagueRoundLabels() {
+  return Array.from({ length: LEAGUE_MATCHDAYS }, (_, i) => `Matchday ${i + 1}`);
 }
 
-// Only name/season are editable. `type` is fixed once created — changing it
-// would invalidate every recorded match's standings/bracket semantics.
+function assertLeague(competition) {
+  if (competition.type !== "league") {
+    throw new AppError("That competition is not the league.", 400, "NOT_A_LEAGUE");
+  }
+}
+
+function assertKnockout(competition) {
+  if (competition.type !== "knockout") {
+    throw new AppError("That competition is not the cup.", 400, "NOT_A_KNOCKOUT");
+  }
+}
+
+// Round labels are fixed per competition type — Matchday 1-16 for the league,
+// Semi-Finals then Final for the cup.
+function assertRoundLabel(competition, roundLabel) {
+  const allowed = competition.type === "league" ? leagueRoundLabels() : CUP_ROUNDS;
+  if (!roundLabel || !allowed.includes(roundLabel)) {
+    throw new AppError(
+      `Round must be one of: ${allowed.join(", ")}.`,
+      400,
+      "INVALID_ROUND",
+    );
+  }
+}
+
+const COMPETITION_LOCKED =
+  "The platform runs a fixed league and cup — competitions can't be added or removed.";
+
+export async function createCompetition() {
+  throw new AppError(COMPETITION_LOCKED, 409, "COMPETITION_LOCKED");
+}
+
+export async function deleteCompetition() {
+  throw new AppError(COMPETITION_LOCKED, 409, "COMPETITION_LOCKED");
+}
+
+// Only the display name and season are editable.
 export async function updateCompetition(competitionId, patch) {
   const competition = await getCompetition(competitionId);
-
   if (patch.type !== undefined && patch.type !== competition.type) {
     throw new AppError(
       "A competition's type can't be changed after it's created.",
@@ -46,7 +71,6 @@ export async function updateCompetition(competitionId, patch) {
       "COMPETITION_TYPE_LOCKED",
     );
   }
-
   const name = patch.name !== undefined ? patch.name : competition.name;
   const season = patch.season !== undefined ? patch.season : competition.season;
   if (!name || !name.trim()) {
@@ -55,7 +79,6 @@ export async function updateCompetition(competitionId, patch) {
   if (!season || !season.trim()) {
     throw new AppError("season is required.", 400, "VALIDATION_ERROR");
   }
-
   const result = await pool.query(
     `UPDATE competitions SET name = $1, season = $2 WHERE id = $3
      RETURNING id, name, type, season`,
@@ -64,29 +87,19 @@ export async function updateCompetition(competitionId, patch) {
   return result.rows[0];
 }
 
-// Removes the competition and, by FK cascade, all of its matches and their
-// goals. Reports how many matches went with it so the UI can warn/confirm.
-export async function deleteCompetition(competitionId) {
-  const countResult = await pool.query(
-    "SELECT count(*)::int AS n FROM matches WHERE competition_id = $1",
-    [competitionId],
-  );
-  const result = await pool.query(
-    "DELETE FROM competitions WHERE id = $1 RETURNING id",
-    [competitionId],
-  );
-  if (result.rows.length === 0) {
-    throw new AppError("Competition not found.", 404, "COMPETITION_NOT_FOUND");
-  }
-  return { id: competitionId, deletedMatches: countResult.rows[0].n };
-}
-
 async function loadMatchGoals(client, matchId) {
   const result = await client.query(
-    "SELECT club_id, scorer_name, minute FROM match_goals WHERE match_id = $1 ORDER BY minute NULLS LAST, id",
+    `SELECT g.club_id, g.player_id, g.scorer_name, g.minute
+     FROM match_goals g WHERE g.match_id = $1
+     ORDER BY g.minute NULLS LAST, g.id`,
     [matchId],
   );
-  return result.rows.map((r) => ({ clubId: r.club_id, scorerName: r.scorer_name, minute: r.minute }));
+  return result.rows.map((r) => ({
+    clubId: r.club_id,
+    playerId: r.player_id,
+    scorerName: r.scorer_name,
+    minute: r.minute,
+  }));
 }
 
 async function toPublicMatch(client, matchRow) {
@@ -106,25 +119,75 @@ async function toPublicMatch(client, matchRow) {
   };
 }
 
-function validateGoals(goals, { homeClubId, awayClubId, homeScore, awayScore }) {
-  if (goals == null) return;
+async function squadFor(clubId) {
+  const result = await pool.query(
+    `SELECT p.id AS player_id, u.name, p.position, p.overall
+     FROM club_memberships m
+     JOIN players p ON p.id = m.player_id
+     JOIN users u ON u.id = p.user_id
+     WHERE m.club_id = $1 AND m.active
+     ORDER BY u.name`,
+    [clubId],
+  );
+  return result.rows.map((r) => ({
+    playerId: r.player_id,
+    name: r.name,
+    position: r.position,
+    overall: r.overall,
+  }));
+}
+
+// Goalscorers are required on every result and must be picked from the scoring
+// club's active squad. `goals` carries { clubId, playerId, minute? } — the
+// scorer's name is resolved here and stored denormalised so an old match sheet
+// still reads correctly after the player leaves the club.
+async function resolveGoals(client, goals, { homeClubId, awayClubId, homeScore, awayScore }) {
   if (!Array.isArray(goals)) {
-    throw new AppError("goals must be an array.", 400, "VALIDATION_ERROR");
+    throw new AppError(
+      "Goalscorers are required — pick a scorer for every goal.",
+      400,
+      "GOALS_REQUIRED",
+    );
   }
+  const total = homeScore + awayScore;
+  if (goals.length !== total) {
+    throw new AppError(
+      `This result has ${total} goal${total === 1 ? "" : "s"} — name a scorer for each one.`,
+      400,
+      "GOAL_COUNT_MISMATCH",
+    );
+  }
+  if (total === 0) return [];
+
+  const squads = new Map([
+    [homeClubId, await squadFor(homeClubId)],
+    [awayClubId, await squadFor(awayClubId)],
+  ]);
+
   let homeGoals = 0;
   let awayGoals = 0;
+  const resolved = [];
   for (const g of goals) {
     if (!g || (g.clubId !== homeClubId && g.clubId !== awayClubId)) {
       throw new AppError("Each goal's clubId must be the home or away club.", 400, "VALIDATION_ERROR");
     }
-    if (typeof g.scorerName !== "string" || !g.scorerName.trim()) {
-      throw new AppError("Each goal needs a scorerName.", 400, "VALIDATION_ERROR");
+    if (!Number.isInteger(g.playerId)) {
+      throw new AppError("Each goal needs a scorer chosen from the club's squad.", 400, "GOALS_REQUIRED");
+    }
+    const scorer = squads.get(g.clubId).find((pl) => pl.playerId === g.playerId);
+    if (!scorer) {
+      throw new AppError(
+        "A goalscorer must be on that club's current squad.",
+        400,
+        "SCORER_NOT_IN_SQUAD",
+      );
     }
     if (g.minute != null && (!Number.isInteger(g.minute) || g.minute < 1 || g.minute > 130)) {
       throw new AppError("A goal's minute must be a whole number between 1 and 130.", 400, "VALIDATION_ERROR");
     }
     if (g.clubId === homeClubId) homeGoals++;
     else awayGoals++;
+    resolved.push({ clubId: g.clubId, playerId: g.playerId, scorerName: scorer.name, minute: g.minute ?? null });
   }
   if (homeGoals !== homeScore || awayGoals !== awayScore) {
     throw new AppError(
@@ -133,14 +196,16 @@ function validateGoals(goals, { homeClubId, awayClubId, homeScore, awayScore }) 
       "GOAL_COUNT_MISMATCH",
     );
   }
+  return resolved;
 }
 
-async function writeGoals(client, matchId, goals) {
+async function writeGoals(client, matchId, resolved) {
   await client.query("DELETE FROM match_goals WHERE match_id = $1", [matchId]);
-  for (const g of goals || []) {
+  for (const g of resolved) {
     await client.query(
-      "INSERT INTO match_goals (match_id, club_id, scorer_name, minute) VALUES ($1, $2, $3, $4)",
-      [matchId, g.clubId, g.scorerName.trim(), g.minute ?? null],
+      `INSERT INTO match_goals (match_id, club_id, player_id, scorer_name, minute)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [matchId, g.clubId, g.playerId, g.scorerName, g.minute],
     );
   }
 }
@@ -167,12 +232,13 @@ export async function createMatch(competitionId, payload) {
   if (!Number.isInteger(homeScore) || homeScore < 0 || !Number.isInteger(awayScore) || awayScore < 0) {
     throw new AppError("Scores must be whole numbers of 0 or more.", 400, "VALIDATION_ERROR");
   }
+  assertRoundLabel(competition, roundLabel);
   if (competition.type === "knockout") {
-    if (leg != null && leg !== 1 && leg !== 2) {
-      throw new AppError("leg must be 1 or 2 for a knockout match.", 400, "VALIDATION_ERROR");
+    if (leg !== 1 && leg !== 2) {
+      throw new AppError("A cup match must be leg 1 or leg 2.", 400, "VALIDATION_ERROR");
     }
   } else if (leg != null) {
-    throw new AppError("leg only applies to knockout matches.", 400, "VALIDATION_ERROR");
+    throw new AppError("leg only applies to cup matches.", 400, "VALIDATION_ERROR");
   }
   const playedAt = playedOn ? new Date(playedOn) : new Date();
   if (Number.isNaN(playedAt.getTime())) {
@@ -188,7 +254,12 @@ export async function createMatch(competitionId, payload) {
     if (clubCheck.rows.length !== 2) {
       throw new AppError("One or both clubs do not exist.", 400, "CLUB_NOT_FOUND");
     }
-    validateGoals(goals, { homeClubId, awayClubId, homeScore, awayScore });
+    const resolved = await resolveGoals(client, goals, {
+      homeClubId,
+      awayClubId,
+      homeScore,
+      awayScore,
+    });
 
     const inserted = await client.query(
       `INSERT INTO matches
@@ -198,7 +269,7 @@ export async function createMatch(competitionId, payload) {
       [competitionId, roundLabel, leg, homeClubId, awayClubId, homeScore, awayScore, playedAt.toISOString()],
     );
     const match = inserted.rows[0];
-    await writeGoals(client, match.id, goals);
+    await writeGoals(client, match.id, resolved);
     const publicMatch = await toPublicMatch(client, match);
     await client.query("COMMIT");
     return publicMatch;
@@ -225,11 +296,25 @@ export async function updateMatch(matchId, patch) {
     if (!Number.isInteger(homeScore) || homeScore < 0 || !Number.isInteger(awayScore) || awayScore < 0) {
       throw new AppError("Scores must be whole numbers of 0 or more.", 400, "VALIDATION_ERROR");
     }
+    const competition = await getCompetition(match.competition_id);
     const roundLabel = patch.roundLabel !== undefined ? patch.roundLabel : match.round_label;
-    let leg = patch.leg !== undefined ? patch.leg : match.leg;
-    if (leg != null && leg !== 1 && leg !== 2) {
-      throw new AppError("leg must be 1 or 2.", 400, "VALIDATION_ERROR");
+    assertRoundLabel(competition, roundLabel);
+    const leg = patch.leg !== undefined ? patch.leg : match.leg;
+    if (competition.type === "knockout") {
+      if (leg !== 1 && leg !== 2) {
+        throw new AppError("A cup match must be leg 1 or leg 2.", 400, "VALIDATION_ERROR");
+      }
+    } else if (leg != null) {
+      throw new AppError("leg only applies to cup matches.", 400, "VALIDATION_ERROR");
     }
+
+    // Entering a result always means naming its scorers.
+    const resolved = await resolveGoals(client, patch.goals, {
+      homeClubId: match.home_club_id,
+      awayClubId: match.away_club_id,
+      homeScore,
+      awayScore,
+    });
     let scheduledAt = match.scheduled_at;
     if (patch.playedOn !== undefined) {
       const d = new Date(patch.playedOn);
@@ -246,15 +331,7 @@ export async function updateMatch(matchId, patch) {
       [homeScore, awayScore, roundLabel, leg, scheduledAt, matchId],
     );
 
-    if (patch.goals !== undefined) {
-      validateGoals(patch.goals, {
-        homeClubId: match.home_club_id,
-        awayClubId: match.away_club_id,
-        homeScore,
-        awayScore,
-      });
-      await writeGoals(client, matchId, patch.goals);
-    }
+    await writeGoals(client, matchId, resolved);
 
     const refreshed = await client.query("SELECT * FROM matches WHERE id = $1", [matchId]);
     const publicMatch = await toPublicMatch(client, refreshed.rows[0]);
@@ -278,11 +355,12 @@ export async function deleteMatch(matchId) {
 // Standings are never stored — always computed from played fixtures, the
 // same principle as a player's "approved sessions" count never being a
 // stored column (see players.service.js's docs elsewhere in this codebase).
+// Standings are never stored — always computed from played matches. Every club
+// on the platform appears from day one, sitting on zeros until it plays, so the
+// league table is a full table the moment the season opens.
 export async function getStandings(competitionId) {
   const competition = await getCompetition(competitionId);
-  if (competition.type !== "league") {
-    throw new AppError("Standings only apply to league competitions.", 400, "NOT_A_LEAGUE");
-  }
+  assertLeague(competition);
 
   const result = await pool.query(
     `
@@ -312,14 +390,23 @@ export async function getStandings(competitionId) {
       FROM participations
     )
     SELECT
-      clubs.id, clubs.name, clubs.crest_code, totals.*,
+      clubs.id, clubs.name, clubs.crest_code,
+      COALESCE(totals.played, 0) AS played,
+      COALESCE(totals.won, 0) AS won,
+      COALESCE(totals.drawn, 0) AS drawn,
+      COALESCE(totals.lost, 0) AS lost,
+      COALESCE(totals.goals_for, 0) AS goals_for,
+      COALESCE(totals.goals_against, 0) AS goals_against,
+      COALESCE(totals.goal_diff, 0) AS goal_diff,
+      COALESCE(totals.points, 0) AS points,
       (
         SELECT array_agg(CASE WHEN gf > ga THEN 'W' WHEN gf = ga THEN 'D' ELSE 'L' END ORDER BY rn DESC)
         FROM recent WHERE recent.club_id = clubs.id AND rn <= 5
       ) AS form
     FROM clubs
-    JOIN totals ON totals.club_id = clubs.id
-    ORDER BY totals.points DESC, totals.goal_diff DESC, totals.goals_for DESC
+    LEFT JOIN totals ON totals.club_id = clubs.id
+    WHERE clubs.archived = false
+    ORDER BY points DESC, goal_diff DESC, goals_for DESC, clubs.name ASC
     `,
     [competitionId],
   );
@@ -338,6 +425,34 @@ export async function getStandings(competitionId) {
     goalDiff: Number(row.goal_diff),
     points: Number(row.points),
     form: row.form || [],
+  }));
+}
+
+// Top goalscorers for a competition, aggregated from the recorded goals.
+export async function getTopScorers(competitionId, { limit = 20 } = {}) {
+  await getCompetition(competitionId);
+  const result = await pool.query(
+    `SELECT g.player_id, g.scorer_name, g.club_id, cl.name AS club_name, cl.crest_code,
+            count(*)::int AS goals,
+            count(DISTINCT g.match_id)::int AS matches
+     FROM match_goals g
+     JOIN matches m ON m.id = g.match_id
+     JOIN clubs cl ON cl.id = g.club_id
+     WHERE m.competition_id = $1 AND m.status = 'played'
+     GROUP BY g.player_id, g.scorer_name, g.club_id, cl.name, cl.crest_code
+     ORDER BY goals DESC, g.scorer_name ASC
+     LIMIT $2`,
+    [competitionId, limit],
+  );
+  return result.rows.map((r, i) => ({
+    rank: i + 1,
+    playerId: r.player_id,
+    name: r.scorer_name,
+    clubId: r.club_id,
+    club: r.club_name,
+    crestCode: r.crest_code,
+    goals: r.goals,
+    matches: r.matches,
   }));
 }
 
@@ -393,9 +508,7 @@ export async function getFixtures(competitionId) {
 // raw fixture rows every time.
 export async function getBracket(competitionId) {
   const competition = await getCompetition(competitionId);
-  if (competition.type !== "knockout") {
-    throw new AppError("A bracket only applies to knockout competitions.", 400, "NOT_A_KNOCKOUT");
-  }
+  assertKnockout(competition);
 
   const result = await pool.query(
     `
@@ -480,16 +593,14 @@ export async function getBracket(competitionId) {
 
 const MS_PER_DAY = 86400000;
 
+// The cup is a four-club knockout: two semi-final ties, then the final.
 function roundNameForTeams(teams) {
-  if (teams <= 2) return "Final";
-  if (teams <= 4) return "Semi-Finals";
-  if (teams <= 8) return "Quarter-Finals";
-  return "Round of 16";
+  return teams <= 2 ? "Final" : "Semi-Finals";
 }
 
 // getBracket() orders rounds by round_label alphabetically, not by
 // progression, so pick the current round by this rank instead.
-const ROUND_RANK = { "Round of 16": 1, "Quarter-Finals": 2, "Semi-Finals": 3, "Final": 4 };
+const ROUND_RANK = { "Semi-Finals": 1, Final: 2 };
 
 async function validateClubIds(clubIds) {
   if (!Array.isArray(clubIds) || clubIds.length < 2) {
@@ -555,12 +666,10 @@ async function insertScheduled(client, competitionId, roundLabel, leg, homeId, a
 
 export async function generateLeagueFixtures(
   competitionId,
-  { clubIds, doubleRound = false, startDate, daysBetweenRounds = 7 } = {},
+  { clubIds, doubleRound = true, startDate, daysBetweenRounds = 7 } = {},
 ) {
   const competition = await getCompetition(competitionId);
-  if (competition.type !== "league") {
-    throw new AppError("Fixture generation for a table only applies to a league.", 400, "NOT_A_LEAGUE");
-  }
+  assertLeague(competition);
   const ids = await validateClubIds(clubIds);
   const base = startDate ? new Date(startDate) : new Date();
   if (Number.isNaN(base.getTime())) {
@@ -571,6 +680,13 @@ export async function generateLeagueFixtures(
   let rounds = roundRobin(ids);
   if (doubleRound) {
     rounds = rounds.concat(rounds.map((pairs) => pairs.map(([h, a]) => [a, h])));
+  }
+  if (rounds.length > LEAGUE_MATCHDAYS) {
+    throw new AppError(
+      `That many clubs needs ${rounds.length} matchdays — the season is ${LEAGUE_MATCHDAYS}.`,
+      400,
+      "TOO_MANY_MATCHDAYS",
+    );
   }
 
   const client = await pool.connect();
@@ -586,7 +702,7 @@ export async function generateLeagueFixtures(
       }
     }
     await client.query("COMMIT");
-    return { created, matchdays: rounds.length };
+    return { created, matchdays: rounds.length, seasonMatchdays: LEAGUE_MATCHDAYS };
   } catch (err) {
     await client.query("ROLLBACK");
     throw err;
@@ -600,12 +716,14 @@ export async function generateKnockoutBracket(
   { clubIds, startDate, daysBetweenLegs = 7 } = {},
 ) {
   const competition = await getCompetition(competitionId);
-  if (competition.type !== "knockout") {
-    throw new AppError("Bracket generation only applies to a knockout.", 400, "NOT_A_KNOCKOUT");
-  }
+  assertKnockout(competition);
   const ids = await validateClubIds(clubIds);
-  if (![2, 4, 8, 16].includes(ids.length)) {
-    throw new AppError("A bracket needs 2, 4, 8 or 16 clubs.", 400, "BAD_BRACKET_SIZE");
+  if (ids.length !== CUP_CLUBS) {
+    throw new AppError(
+      `The cup is a ${CUP_CLUBS}-club knockout — pick exactly ${CUP_CLUBS} clubs.`,
+      400,
+      "BAD_BRACKET_SIZE",
+    );
   }
   const base = startDate ? new Date(startDate) : new Date();
   if (Number.isNaN(base.getTime())) {
@@ -651,9 +769,7 @@ export async function advanceKnockout(
   { startDate, daysBetweenLegs = 7 } = {},
 ) {
   const competition = await getCompetition(competitionId);
-  if (competition.type !== "knockout") {
-    throw new AppError("Only a knockout can be advanced.", 400, "NOT_A_KNOCKOUT");
-  }
+  assertKnockout(competition);
 
   const rounds = await getBracket(competitionId);
   if (rounds.length === 0) {

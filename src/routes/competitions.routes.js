@@ -4,6 +4,7 @@ import {
   getStandingsController,
   getFixturesController,
   getBracketController,
+  getTopScorersController,
 } from "../controllers/competitions.controller.js";
 
 const router = Router();
@@ -14,5 +15,6 @@ router.get("/", listCompetitionsController);
 router.get("/:id/standings", getStandingsController);
 router.get("/:id/fixtures", getFixturesController);
 router.get("/:id/bracket", getBracketController);
+router.get("/:id/scorers", getTopScorersController);
 
 export default router;
