@@ -17,6 +17,8 @@ import {
 } from "../controllers/adminDrills.controller.js";
 import {
   createCompetitionController,
+  updateCompetitionController,
+  deleteCompetitionController,
   createMatchController,
   updateMatchController,
   deleteMatchController,
@@ -52,6 +54,8 @@ router.post("/drills/:id/reinstate", reinstateDrillController);
 
 // --- competition engine (Phase 6) ---
 router.post("/competitions", createCompetitionController);
+router.patch("/competitions/:id", updateCompetitionController);
+router.delete("/competitions/:id", deleteCompetitionController);
 router.post("/competitions/:id/matches", createMatchController);
 router.patch("/matches/:id", updateMatchController);
 router.delete("/matches/:id", deleteMatchController);

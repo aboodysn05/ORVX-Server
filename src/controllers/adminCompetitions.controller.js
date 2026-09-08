@@ -12,6 +12,19 @@ export async function createCompetitionController(req, res) {
   res.status(201).json({ competition });
 }
 
+export async function updateCompetitionController(req, res) {
+  const competition = await competitionsService.updateCompetition(
+    idParam(req, "id", "competition"),
+    req.body,
+  );
+  res.json({ competition });
+}
+
+export async function deleteCompetitionController(req, res) {
+  const result = await competitionsService.deleteCompetition(idParam(req, "id", "competition"));
+  res.json(result);
+}
+
 export async function createMatchController(req, res) {
   const match = await competitionsService.createMatch(idParam(req, "id", "competition"), req.body);
   res.status(201).json({ match });
