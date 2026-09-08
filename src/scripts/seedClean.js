@@ -24,13 +24,13 @@ import { PLATFORM_EVALUATOR_ORG } from "../utils/roles.js";
 
 const adminName = process.env.ADMIN_NAME || "Abdullah Yaseen";
 const adminEmail = (process.env.ADMIN_EMAIL || "abdullah.yaseen@orvx.app").trim().toLowerCase();
-const adminPassword = process.env.ADMIN_PASSWORD || "Orvx-Admin-2026";
+const adminPassword = process.env.ADMIN_PASSWORD || "Dx#75kmt";
 
 const evalName = process.env.EVALUATOR_NAME || "Abdulrahman Hawamdeh";
 const evalEmail = (process.env.EVALUATOR_EMAIL || "abdulrahman.hawamdeh@orvx.app")
   .trim()
   .toLowerCase();
-const evalPassword = process.env.EVALUATOR_PASSWORD || "Orvx-Eval-2026";
+const evalPassword = process.env.EVALUATOR_PASSWORD || "Dx#75kmt";
 
 for (const [label, pw] of [
   ["ADMIN_PASSWORD", adminPassword],
