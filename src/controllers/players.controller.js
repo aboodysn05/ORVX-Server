@@ -31,3 +31,16 @@ export async function featuredController(req, res) {
   const player = await playersService.getFeaturedPlayer();
   res.json({ player });
 }
+
+export async function setRegisteredPositionController(req, res) {
+  const playerId = Number(req.params.playerId);
+  if (!Number.isInteger(playerId)) {
+    throw new AppError("Invalid player id.", 400, "VALIDATION_ERROR");
+  }
+  const { position } = req.body;
+  if (!position) {
+    throw new AppError("position is required.", 400, "VALIDATION_ERROR");
+  }
+  const player = await playersService.setRegisteredPosition(playerId, position, req.currentUser);
+  res.json({ player });
+}

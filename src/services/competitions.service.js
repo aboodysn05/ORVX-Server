@@ -471,3 +471,265 @@ export async function getBracket(competitionId) {
   // Leagues page already reads).
   return rounds;
 }
+
+// ---------------------------------------------------------------------------
+// Fixture generation (C2). Instead of the admin hand-entering every scheduled
+// match, seed a whole round-robin or a knockout bracket, then let the bracket
+// advance itself as results come in.
+// ---------------------------------------------------------------------------
+
+const MS_PER_DAY = 86400000;
+
+function roundNameForTeams(teams) {
+  if (teams <= 2) return "Final";
+  if (teams <= 4) return "Semi-Finals";
+  if (teams <= 8) return "Quarter-Finals";
+  return "Round of 16";
+}
+
+// getBracket() orders rounds by round_label alphabetically, not by
+// progression, so pick the current round by this rank instead.
+const ROUND_RANK = { "Round of 16": 1, "Quarter-Finals": 2, "Semi-Finals": 3, "Final": 4 };
+
+async function validateClubIds(clubIds) {
+  if (!Array.isArray(clubIds) || clubIds.length < 2) {
+    throw new AppError("Provide at least two clubs.", 400, "VALIDATION_ERROR");
+  }
+  const ids = clubIds.map(Number);
+  if (ids.some((n) => !Number.isInteger(n)) || new Set(ids).size !== ids.length) {
+    throw new AppError("clubIds must be distinct club ids.", 400, "VALIDATION_ERROR");
+  }
+  const found = await pool.query("SELECT id FROM clubs WHERE id = ANY($1::int[])", [ids]);
+  if (found.rows.length !== ids.length) {
+    throw new AppError("One or more clubs do not exist.", 400, "CLUB_NOT_FOUND");
+  }
+  return ids;
+}
+
+// Circle method: fixed first slot, rotate the rest. Alternates home/away by
+// round so no club is home (or away) every week.
+function roundRobin(ids) {
+  const arr = [...ids];
+  if (arr.length % 2 === 1) arr.push(null); // bye marker
+  const n = arr.length;
+  const rounds = [];
+  for (let r = 0; r < n - 1; r++) {
+    const pairs = [];
+    for (let i = 0; i < n / 2; i++) {
+      const a = arr[i];
+      const b = arr[n - 1 - i];
+      if (a != null && b != null) pairs.push(r % 2 === 0 ? [a, b] : [b, a]);
+    }
+    rounds.push(pairs);
+    arr.splice(1, 0, arr.pop()); // rotate, keeping arr[0] fixed
+  }
+  return rounds;
+}
+
+async function assertNoResults(client, competitionId) {
+  const played = await client.query(
+    "SELECT 1 FROM matches WHERE competition_id = $1 AND status = 'played' LIMIT 1",
+    [competitionId],
+  );
+  if (played.rows.length > 0) {
+    throw new AppError(
+      "This competition already has recorded results — delete it to re-generate.",
+      409,
+      "HAS_RESULTS",
+    );
+  }
+  await client.query(
+    "DELETE FROM matches WHERE competition_id = $1 AND status = 'scheduled'",
+    [competitionId],
+  );
+}
+
+async function insertScheduled(client, competitionId, roundLabel, leg, homeId, awayId, when) {
+  await client.query(
+    `INSERT INTO matches
+       (competition_id, round_label, leg, home_club_id, away_club_id, status, scheduled_at)
+     VALUES ($1, $2, $3, $4, $5, 'scheduled', $6)`,
+    [competitionId, roundLabel, leg, homeId, awayId, when.toISOString()],
+  );
+}
+
+export async function generateLeagueFixtures(
+  competitionId,
+  { clubIds, doubleRound = false, startDate, daysBetweenRounds = 7 } = {},
+) {
+  const competition = await getCompetition(competitionId);
+  if (competition.type !== "league") {
+    throw new AppError("Fixture generation for a table only applies to a league.", 400, "NOT_A_LEAGUE");
+  }
+  const ids = await validateClubIds(clubIds);
+  const base = startDate ? new Date(startDate) : new Date();
+  if (Number.isNaN(base.getTime())) {
+    throw new AppError("startDate must be a valid date.", 400, "VALIDATION_ERROR");
+  }
+  const gap = Number(daysBetweenRounds) > 0 ? Number(daysBetweenRounds) : 7;
+
+  let rounds = roundRobin(ids);
+  if (doubleRound) {
+    rounds = rounds.concat(rounds.map((pairs) => pairs.map(([h, a]) => [a, h])));
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await assertNoResults(client, competitionId);
+    let created = 0;
+    for (let r = 0; r < rounds.length; r++) {
+      const when = new Date(base.getTime() + r * gap * MS_PER_DAY);
+      for (const [homeId, awayId] of rounds[r]) {
+        await insertScheduled(client, competitionId, `Matchday ${r + 1}`, null, homeId, awayId, when);
+        created += 1;
+      }
+    }
+    await client.query("COMMIT");
+    return { created, matchdays: rounds.length };
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+export async function generateKnockoutBracket(
+  competitionId,
+  { clubIds, startDate, daysBetweenLegs = 7 } = {},
+) {
+  const competition = await getCompetition(competitionId);
+  if (competition.type !== "knockout") {
+    throw new AppError("Bracket generation only applies to a knockout.", 400, "NOT_A_KNOCKOUT");
+  }
+  const ids = await validateClubIds(clubIds);
+  if (![2, 4, 8, 16].includes(ids.length)) {
+    throw new AppError("A bracket needs 2, 4, 8 or 16 clubs.", 400, "BAD_BRACKET_SIZE");
+  }
+  const base = startDate ? new Date(startDate) : new Date();
+  if (Number.isNaN(base.getTime())) {
+    throw new AppError("startDate must be a valid date.", 400, "VALIDATION_ERROR");
+  }
+  const legGap = Number(daysBetweenLegs) > 0 ? Number(daysBetweenLegs) : 7;
+  const roundLabel = roundNameForTeams(ids.length);
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await assertNoResults(client, competitionId);
+    let created = 0;
+    for (let i = 0; i < ids.length / 2; i++) {
+      const a = ids[i];
+      const b = ids[ids.length - 1 - i];
+      await insertScheduled(client, competitionId, roundLabel, 1, a, b, base);
+      await insertScheduled(
+        client,
+        competitionId,
+        roundLabel,
+        2,
+        b,
+        a,
+        new Date(base.getTime() + legGap * MS_PER_DAY),
+      );
+      created += 2;
+    }
+    await client.query("COMMIT");
+    return { round: roundLabel, ties: ids.length / 2, created };
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+// Creates the next knockout round from the winners of the most advanced round,
+// once every tie in it has a decided aggregate.
+export async function advanceKnockout(
+  competitionId,
+  { startDate, daysBetweenLegs = 7 } = {},
+) {
+  const competition = await getCompetition(competitionId);
+  if (competition.type !== "knockout") {
+    throw new AppError("Only a knockout can be advanced.", 400, "NOT_A_KNOCKOUT");
+  }
+
+  const rounds = await getBracket(competitionId);
+  if (rounds.length === 0) {
+    throw new AppError("Seed the bracket first.", 409, "NO_BRACKET");
+  }
+  // "Most advanced round" by progression rank, not the alphabetical order
+  // getBracket returns.
+  const last = [...rounds].sort(
+    (a, b) => (ROUND_RANK[b.round] || 0) - (ROUND_RANK[a.round] || 0),
+  )[0];
+  if (last.round === "Final") {
+    throw new AppError(
+      last.ties.every((t) => t.through)
+        ? "The final is decided — this competition is complete."
+        : "Play the final to complete the competition.",
+      409,
+      "ALREADY_COMPLETE",
+    );
+  }
+  if (last.ties.some((t) => !t.through)) {
+    throw new AppError(
+      "Every tie in the current round must have a decided winner first.",
+      409,
+      "ROUND_NOT_COMPLETE",
+    );
+  }
+
+  const winnerNames = last.ties.map((t) => t.through);
+  const clubRows = await pool.query("SELECT id, name FROM clubs WHERE name = ANY($1::text[])", [
+    winnerNames,
+  ]);
+  const idByName = new Map(clubRows.rows.map((r) => [r.name, r.id]));
+  const winnerIds = winnerNames.map((n) => idByName.get(n));
+  if (winnerIds.some((id) => id == null)) {
+    throw new AppError("Could not resolve every round winner.", 500, "WINNER_LOOKUP_FAILED");
+  }
+
+  const nextLabel = roundNameForTeams(winnerIds.length);
+  const base = startDate ? new Date(startDate) : new Date();
+  if (Number.isNaN(base.getTime())) {
+    throw new AppError("startDate must be a valid date.", 400, "VALIDATION_ERROR");
+  }
+  const legGap = Number(daysBetweenLegs) > 0 ? Number(daysBetweenLegs) : 7;
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const exists = await client.query(
+      "SELECT 1 FROM matches WHERE competition_id = $1 AND round_label = $2 LIMIT 1",
+      [competitionId, nextLabel],
+    );
+    if (exists.rows.length > 0) {
+      throw new AppError(`The ${nextLabel} already exist.`, 409, "NEXT_ROUND_EXISTS");
+    }
+    let created = 0;
+    for (let i = 0; i < winnerIds.length; i += 2) {
+      const a = winnerIds[i];
+      const b = winnerIds[i + 1];
+      await insertScheduled(client, competitionId, nextLabel, 1, a, b, base);
+      await insertScheduled(
+        client,
+        competitionId,
+        nextLabel,
+        2,
+        b,
+        a,
+        new Date(base.getTime() + legGap * MS_PER_DAY),
+      );
+      created += 2;
+    }
+    await client.query("COMMIT");
+    return { round: nextLabel, ties: winnerIds.length / 2, created };
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+}

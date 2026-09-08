@@ -25,6 +25,27 @@ export async function deleteCompetitionController(req, res) {
   res.json(result);
 }
 
+export async function generateLeagueFixturesController(req, res) {
+  const result = await competitionsService.generateLeagueFixtures(
+    idParam(req, "id", "competition"),
+    req.body,
+  );
+  res.status(201).json(result);
+}
+
+export async function generateKnockoutBracketController(req, res) {
+  const result = await competitionsService.generateKnockoutBracket(
+    idParam(req, "id", "competition"),
+    req.body,
+  );
+  res.status(201).json(result);
+}
+
+export async function advanceKnockoutController(req, res) {
+  const result = await competitionsService.advanceKnockout(idParam(req, "id", "competition"), req.body);
+  res.status(201).json(result);
+}
+
 export async function createMatchController(req, res) {
   const match = await competitionsService.createMatch(idParam(req, "id", "competition"), req.body);
   res.status(201).json({ match });

@@ -215,3 +215,74 @@ export async function recomputeRating(client, playerId) {
   ]);
   return { overall, tier };
 }
+
+// A club head coach (or admin) changes a rostered player's REGISTERED position
+// — the one that drives their attribute set and dashboard, not the squad-slot
+// label on the membership. Attacker <-> Defender keeps the same six outfield
+// attributes; switching to/from Goalkeeper swaps the whole set, so those
+// attributes are reset to a neutral baseline and the rating is recomputed.
+const NEUTRAL_ATTR = 50;
+
+async function assertCanManagePlayer(client, playerId, actingUser) {
+  if (actingUser.role === "admin") return;
+  if (actingUser.coachId == null) {
+    throw new AppError("Only a club head coach can change a player's position.", 403, "FORBIDDEN");
+  }
+  const r = await client.query(
+    `SELECT 1 FROM club_memberships m
+     JOIN clubs cl ON cl.id = m.club_id
+     WHERE m.player_id = $1 AND m.active AND cl.head_coach_id = $2 LIMIT 1`,
+    [playerId, actingUser.coachId],
+  );
+  if (!r.rows[0]) {
+    throw new AppError("This player is not on your roster.", 403, "NOT_YOUR_PLAYER");
+  }
+}
+
+export async function setRegisteredPosition(playerId, position, actingUser) {
+  if (!POSITIONS.includes(position)) {
+    throw new AppError(`Position must be one of: ${POSITIONS.join(", ")}.`, 400, "VALIDATION_ERROR");
+  }
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const cur = await client.query(
+      "SELECT id, position, user_id FROM players WHERE id = $1 FOR UPDATE",
+      [playerId],
+    );
+    const player = cur.rows[0];
+    if (!player) {
+      throw new AppError("Player not found.", 404, "PLAYER_NOT_FOUND");
+    }
+    await assertCanManagePlayer(client, playerId, actingUser);
+
+    if (player.position !== position) {
+      const oldKeys = keysFor(player.position);
+      const newKeys = keysFor(position);
+      const sameSet =
+        oldKeys.length === newKeys.length && oldKeys.every((k, i) => k === newKeys[i]);
+
+      await client.query("UPDATE players SET position = $1 WHERE id = $2", [position, playerId]);
+
+      if (!sameSet) {
+        await client.query("DELETE FROM player_attributes WHERE player_id = $1", [playerId]);
+        for (const key of newKeys) {
+          await client.query(
+            `INSERT INTO player_attributes (player_id, attribute_id, value)
+             SELECT $1, id, $3 FROM attributes WHERE code = $2`,
+            [playerId, key, NEUTRAL_ATTR],
+          );
+        }
+      }
+      await recomputeRating(client, playerId);
+    }
+
+    await client.query("COMMIT");
+    return getProfileByUserId(player.user_id);
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+}

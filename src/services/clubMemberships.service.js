@@ -335,6 +335,38 @@ export async function applyToClub(userId, clubId, { message } = {}) {
   }
 }
 
+// The player pulls their own still-pending application. Accepted/declined ones
+// are final; withdrawing frees the one-pending-per-player slot so they can
+// apply elsewhere.
+export async function withdrawClubApplication(userId, appId) {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const player = await getPlayerByUserId(client, userId);
+    const found = await client.query("SELECT * FROM club_applications WHERE id = $1", [appId]);
+    const app = found.rows[0];
+    if (!app || app.player_id !== player.id) {
+      throw new AppError("Application not found.", 404, "APPLICATION_NOT_FOUND");
+    }
+    if (app.status !== "pending") {
+      throw new AppError("Only a pending application can be withdrawn.", 409, "APPLICATION_NOT_PENDING");
+    }
+    const updated = await client.query(
+      `UPDATE club_applications SET status = 'withdrawn', decided_at = now()
+       WHERE id = $1 RETURNING *`,
+      [appId],
+    );
+    await client.query("COMMIT");
+    const r = updated.rows[0];
+    return { id: r.id, clubId: r.club_id, status: r.status, decidedAt: r.decided_at };
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
 export async function listMyClubApplications(userId) {
   const client = await pool.connect();
   try {

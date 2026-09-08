@@ -31,3 +31,14 @@ export async function meController(req, res) {
   const user = await authService.getUserById(req.user.id);
   res.json({ user });
 }
+
+export async function updateMeController(req, res) {
+  const { name, email, currentPassword, newPassword } = req.body || {};
+  const user = await authService.updateAccount(req.user.id, {
+    name,
+    email,
+    currentPassword,
+    newPassword,
+  });
+  res.json({ user });
+}

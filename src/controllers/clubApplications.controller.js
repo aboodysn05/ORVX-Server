@@ -24,6 +24,11 @@ export async function myClubApplicationsController(req, res) {
   res.json({ applications });
 }
 
+export async function withdrawMyApplicationController(req, res) {
+  const application = await memberships.withdrawClubApplication(req.user.id, appId(req));
+  res.json({ application });
+}
+
 export async function listClubApplicationsController(req, res) {
   const applications = await memberships.listClubApplications(clubId(req), req.currentUser);
   res.json({ applications });
