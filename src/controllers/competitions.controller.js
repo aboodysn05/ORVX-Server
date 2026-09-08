@@ -19,3 +19,9 @@ export async function getBracketController(req, res) {
   const rounds = await competitionsService.getBracket(Number(req.params.id));
   res.json({ rounds });
 }
+
+export async function getTopScorersController(req, res) {
+  const scorers = await competitionsService.getTopScorers(Number(req.params.id));
+  res.json({ scorers });
+}
+

@@ -39,9 +39,13 @@ function validateAssessmentInput({ position, dominantFoot, heightCm, weightKg, a
 }
 
 function toPublicProfile(playerRow, attributeRows) {
+  // A player can hold rows for both attribute sets (a coach may have switched
+  // them to goalkeeper and back). Only the six their current position uses are
+  // public — the dormant set stays in the database, unread.
+  const active = new Set(keysFor(playerRow.position));
   const attributes = {};
   for (const row of attributeRows) {
-    attributes[row.code] = row.value;
+    if (active.has(row.code)) attributes[row.code] = row.value;
   }
   return {
     position: playerRow.position,
@@ -86,15 +90,15 @@ export async function submitAssessment(userId, input) {
     const player = playerResult.rows[0];
 
     // A retake can switch position (e.g. Attacker -> Goalkeeper), which swaps
-    // the whole attribute set — replace rather than upsert so the old
-    // position's attributes don't linger alongside the new ones.
-    await client.query("DELETE FROM player_attributes WHERE player_id = $1", [player.id]);
-
+    // which six attributes are active. The other set's rows are left in place
+    // so switching back restores the player's real values rather than a
+    // baseline — players.position decides which six count.
     const attributeRows = [];
     for (const key of keys) {
       const result = await client.query(
         `INSERT INTO player_attributes (player_id, attribute_id, value)
          SELECT $1, attributes.id, $3 FROM attributes WHERE attributes.code = $2
+         ON CONFLICT (player_id, attribute_id) DO UPDATE SET value = EXCLUDED.value
          RETURNING (SELECT code FROM attributes WHERE id = attribute_id) AS code, value`,
         [player.id, key, attributes[key]],
       );
@@ -223,6 +227,19 @@ export async function recomputeRating(client, playerId) {
 // attributes are reset to a neutral baseline and the rating is recomputed.
 const NEUTRAL_ATTR = 50;
 
+// Creates any missing attribute rows for `keys` at the neutral baseline and
+// leaves every existing row (including the other position set's) untouched.
+async function ensureAttributeRows(client, playerId, keys) {
+  for (const key of keys) {
+    await client.query(
+      `INSERT INTO player_attributes (player_id, attribute_id, value)
+       SELECT $1, id, $3 FROM attributes WHERE code = $2
+       ON CONFLICT (player_id, attribute_id) DO NOTHING`,
+      [playerId, key, NEUTRAL_ATTR],
+    );
+  }
+}
+
 async function assertCanManagePlayer(client, playerId, actingUser) {
   if (actingUser.role === "admin") return;
   if (actingUser.coachId == null) {
@@ -265,14 +282,10 @@ export async function setRegisteredPosition(playerId, position, actingUser) {
       await client.query("UPDATE players SET position = $1 WHERE id = $2", [position, playerId]);
 
       if (!sameSet) {
-        await client.query("DELETE FROM player_attributes WHERE player_id = $1", [playerId]);
-        for (const key of newKeys) {
-          await client.query(
-            `INSERT INTO player_attributes (player_id, attribute_id, value)
-             SELECT $1, id, $3 FROM attributes WHERE code = $2`,
-            [playerId, key, NEUTRAL_ATTR],
-          );
-        }
+        // Non-destructive: the outgoing set's rows stay on the player, so
+        // switching back restores their real values. Only the incoming set's
+        // missing rows are created, seeded at a neutral baseline.
+        await ensureAttributeRows(client, playerId, newKeys);
       }
       await recomputeRating(client, playerId);
     }

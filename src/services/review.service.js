@@ -105,14 +105,18 @@ export async function getReviewQueue(reviewer) {
   }
 
   const attrResult = await pool.query(
-    `SELECT pa.player_id, a.code, pa.value
+    `SELECT pa.player_id, a.code, pa.value, p.position
      FROM player_attributes pa
      JOIN attributes a ON a.id = pa.attribute_id
+     JOIN players p ON p.id = pa.player_id
      WHERE pa.player_id = ANY($1::int[])`,
     [playerIds],
   );
   const attrsByPlayer = new Map();
   for (const row of attrResult.rows) {
+    // Only the six the player's current position uses (a player can hold both
+    // sets after a coach switched them to goalkeeper and back).
+    if (!keysFor(row.position).includes(row.code)) continue;
     if (!attrsByPlayer.has(row.player_id)) attrsByPlayer.set(row.player_id, {});
     attrsByPlayer.get(row.player_id)[row.code] = row.value;
   }
@@ -219,6 +223,32 @@ export async function getReviewStats(reviewer) {
   };
 }
 
+// Sums every drill's boosts on a submission and adds them to the player's
+// attributes, clamped to 0-100. Codes outside the player's position set match
+// no row and are skipped. Returns what was actually aggregated.
+async function creditDrillBoosts(client, submissionId, playerId) {
+  const drillRows = await client.query(
+    "SELECT boosts FROM drill_submission_drills WHERE drill_submission_id = $1",
+    [submissionId],
+  );
+  const agg = {};
+  for (const row of drillRows.rows) {
+    for (const [code, val] of Object.entries(row.boosts || {})) {
+      agg[code] = (agg[code] || 0) + val;
+    }
+  }
+  for (const [code, boost] of Object.entries(agg)) {
+    await client.query(
+      `UPDATE player_attributes
+       SET value = LEAST(100, GREATEST(0, value + $1))
+       WHERE player_id = $2
+         AND attribute_id = (SELECT id FROM attributes WHERE code = $3)`,
+      [boost, playerId, code],
+    );
+  }
+  return agg;
+}
+
 export async function reviewSubmission({ submissionId, reviewer, verdict, feedback, verifiedAttributes }) {
   if (verdict !== "approved" && verdict !== "rejected") {
     throw new AppError('verdict must be "approved" or "rejected".', 400, "VALIDATION_ERROR");
@@ -295,8 +325,9 @@ export async function reviewSubmission({ submissionId, reviewer, verdict, feedba
     const keys = keysFor(player.position);
 
     if (hasVerified) {
-      // Evaluator's verified card is the final baseline — set absolutely, do
-      // not additionally stack the drill boosts on the same review.
+      // The evaluator's verified card is the corrected baseline; the drills the
+      // player actually completed are then credited on top of it, so an
+      // approved submission always carries its attribute additions.
       for (const [key, value] of Object.entries(verifiedAttributes)) {
         if (!keys.includes(key)) {
           throw new AppError(
@@ -321,29 +352,12 @@ export async function reviewSubmission({ submissionId, reviewer, verdict, feedba
           [clampAttr(value), player.id, key],
         );
       }
-    } else {
-      // Credit the submission's aggregated drill boosts.
-      const drillRows = await client.query(
-        "SELECT boosts FROM drill_submission_drills WHERE drill_submission_id = $1",
-        [submissionId],
-      );
-      const agg = {};
-      for (const row of drillRows.rows) {
-        for (const [code, val] of Object.entries(row.boosts || {})) {
-          agg[code] = (agg[code] || 0) + val;
-        }
-      }
-      for (const [code, boost] of Object.entries(agg)) {
-        // Skip codes outside this player's position set (rowCount 0).
-        await client.query(
-          `UPDATE player_attributes
-           SET value = LEAST(100, GREATEST(0, value + $1))
-           WHERE player_id = $2
-             AND attribute_id = (SELECT id FROM attributes WHERE code = $3)`,
-          [boost, player.id, code],
-        );
-      }
     }
+
+    // Credit the submission's aggregated drill boosts. This runs for every
+    // approval — with or without a verified card — because the additions are
+    // what the player earned by completing the drills.
+    const credited = await creditDrillBoosts(client, submissionId, player.id);
 
     await recomputeRating(client, player.id);
 
@@ -358,7 +372,7 @@ export async function reviewSubmission({ submissionId, reviewer, verdict, feedba
     await client.query("COMMIT");
 
     const profile = await getProfileByUserId(player.user_id);
-    return { submission: publicSubmission, player: profile };
+    return { submission: publicSubmission, player: profile, credited };
   } catch (err) {
     await client.query("ROLLBACK");
     throw err;

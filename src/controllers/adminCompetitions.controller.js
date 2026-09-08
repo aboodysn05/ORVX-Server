@@ -7,22 +7,12 @@ function idParam(req, key, label) {
   return id;
 }
 
-export async function createCompetitionController(req, res) {
-  const competition = await competitionsService.createCompetition(req.body);
-  res.status(201).json({ competition });
-}
-
 export async function updateCompetitionController(req, res) {
   const competition = await competitionsService.updateCompetition(
     idParam(req, "id", "competition"),
     req.body,
   );
   res.json({ competition });
-}
-
-export async function deleteCompetitionController(req, res) {
-  const result = await competitionsService.deleteCompetition(idParam(req, "id", "competition"));
-  res.json(result);
 }
 
 export async function generateLeagueFixturesController(req, res) {
