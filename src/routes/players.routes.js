@@ -2,9 +2,17 @@ import { Router } from "express";
 import { requireAuth } from "../middleware/auth.js";
 import { requireRole } from "../middleware/requireRole.js";
 import { attachCurrentUser } from "../middleware/loadUser.js";
-import { submitAssessmentController, meController, featuredController } from "../controllers/players.controller.js";
+import {
+  submitAssessmentController,
+  meController,
+  featuredController,
+  setRegisteredPositionController,
+} from "../controllers/players.controller.js";
 import { scoutingPoolController } from "../controllers/clubMemberships.controller.js";
-import { myClubApplicationsController } from "../controllers/clubApplications.controller.js";
+import {
+  myClubApplicationsController,
+  withdrawMyApplicationController,
+} from "../controllers/clubApplications.controller.js";
 
 const router = Router();
 
@@ -24,5 +32,20 @@ router.get(
 router.post("/assessment", requireAuth, requireRole("player"), submitAssessmentController);
 router.get("/me", requireAuth, requireRole("player"), meController);
 router.get("/me/applications", requireAuth, requireRole("player"), myClubApplicationsController);
+router.delete(
+  "/me/applications/:appId",
+  requireAuth,
+  requireRole("player"),
+  withdrawMyApplicationController,
+);
+
+// A club head coach (or admin) changes a rostered player's registered position.
+router.patch(
+  "/:playerId/registered-position",
+  requireAuth,
+  attachCurrentUser,
+  requireRole("coach", "admin"),
+  setRegisteredPositionController,
+);
 
 export default router;

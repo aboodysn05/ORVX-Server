@@ -19,6 +19,9 @@ import {
   createCompetitionController,
   updateCompetitionController,
   deleteCompetitionController,
+  generateLeagueFixturesController,
+  generateKnockoutBracketController,
+  advanceKnockoutController,
   createMatchController,
   updateMatchController,
   deleteMatchController,
@@ -56,6 +59,9 @@ router.post("/drills/:id/reinstate", reinstateDrillController);
 router.post("/competitions", createCompetitionController);
 router.patch("/competitions/:id", updateCompetitionController);
 router.delete("/competitions/:id", deleteCompetitionController);
+router.post("/competitions/:id/fixtures/generate", generateLeagueFixturesController);
+router.post("/competitions/:id/bracket/generate", generateKnockoutBracketController);
+router.post("/competitions/:id/bracket/advance", advanceKnockoutController);
 router.post("/competitions/:id/matches", createMatchController);
 router.patch("/matches/:id", updateMatchController);
 router.delete("/matches/:id", deleteMatchController);
