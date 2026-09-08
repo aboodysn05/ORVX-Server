@@ -34,6 +34,53 @@ export async function createCompetition({ name, type, season }) {
   return result.rows[0];
 }
 
+// Only name/season are editable. `type` is fixed once created — changing it
+// would invalidate every recorded match's standings/bracket semantics.
+export async function updateCompetition(competitionId, patch) {
+  const competition = await getCompetition(competitionId);
+
+  if (patch.type !== undefined && patch.type !== competition.type) {
+    throw new AppError(
+      "A competition's type can't be changed after it's created.",
+      400,
+      "COMPETITION_TYPE_LOCKED",
+    );
+  }
+
+  const name = patch.name !== undefined ? patch.name : competition.name;
+  const season = patch.season !== undefined ? patch.season : competition.season;
+  if (!name || !name.trim()) {
+    throw new AppError("Competition name is required.", 400, "VALIDATION_ERROR");
+  }
+  if (!season || !season.trim()) {
+    throw new AppError("season is required.", 400, "VALIDATION_ERROR");
+  }
+
+  const result = await pool.query(
+    `UPDATE competitions SET name = $1, season = $2 WHERE id = $3
+     RETURNING id, name, type, season`,
+    [name.trim(), season.trim(), competitionId],
+  );
+  return result.rows[0];
+}
+
+// Removes the competition and, by FK cascade, all of its matches and their
+// goals. Reports how many matches went with it so the UI can warn/confirm.
+export async function deleteCompetition(competitionId) {
+  const countResult = await pool.query(
+    "SELECT count(*)::int AS n FROM matches WHERE competition_id = $1",
+    [competitionId],
+  );
+  const result = await pool.query(
+    "DELETE FROM competitions WHERE id = $1 RETURNING id",
+    [competitionId],
+  );
+  if (result.rows.length === 0) {
+    throw new AppError("Competition not found.", 404, "COMPETITION_NOT_FOUND");
+  }
+  return { id: competitionId, deletedMatches: countResult.rows[0].n };
+}
+
 async function loadMatchGoals(client, matchId) {
   const result = await client.query(
     "SELECT club_id, scorer_name, minute FROM match_goals WHERE match_id = $1 ORDER BY minute NULLS LAST, id",
