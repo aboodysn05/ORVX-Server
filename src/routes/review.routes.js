@@ -4,6 +4,7 @@ import { requireRole } from "../middleware/requireRole.js";
 import { attachCurrentUser } from "../middleware/loadUser.js";
 import {
   getReviewQueueController,
+  getReviewStatsController,
   reviewSubmissionController,
 } from "../controllers/review.controller.js";
 
@@ -14,6 +15,7 @@ const router = Router();
 router.use(requireAuth, attachCurrentUser, requireRole("coach", "admin"));
 
 router.get("/queue", getReviewQueueController);
+router.get("/stats", getReviewStatsController);
 router.post("/submissions/:id", reviewSubmissionController);
 
 export default router;

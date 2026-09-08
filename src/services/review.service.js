@@ -150,6 +150,75 @@ export async function getReviewQueue(reviewer) {
   return { queue };
 }
 
+// How many submissions this reviewer currently has waiting — the same
+// filter getReviewQueue uses, counted rather than materialised.
+async function countPending(reviewer) {
+  if (isReviewer(reviewer)) {
+    const r = await pool.query(
+      `SELECT count(*)::int AS n FROM drill_submissions s
+       WHERE s.status = 'submitted' AND s.review_status = 'pending'
+         AND s.reviewer_coach_id IS NULL
+         AND NOT EXISTS (
+           SELECT 1 FROM drill_submissions a
+           WHERE a.player_id = s.player_id AND a.review_status = 'approved'
+         )`,
+    );
+    return r.rows[0].n;
+  }
+  if (reviewer.coachId != null) {
+    const r = await pool.query(
+      `SELECT count(*)::int AS n FROM drill_submissions s
+       WHERE s.status = 'submitted' AND s.review_status = 'pending'
+         AND (
+           s.reviewer_coach_id = $1
+           OR s.player_id IN (
+             SELECT m.player_id FROM club_memberships m
+             JOIN clubs cl ON cl.id = m.club_id
+             WHERE cl.head_coach_id = $1 AND m.active
+           )
+         )`,
+      [reviewer.coachId],
+    );
+    return r.rows[0].n;
+  }
+  return 0;
+}
+
+// Lifetime review totals for the signed-in reviewer, for the stat cards on
+// the Evaluator Console and the Coach Review Queue. `reviewed_by` is stamped
+// on every approve/reject (see reviewSubmission).
+export async function getReviewStats(reviewer) {
+  const [pending, totals, xp] = await Promise.all([
+    countPending(reviewer),
+    pool.query(
+      `SELECT
+         count(*) FILTER (WHERE review_status = 'approved')::int AS approved,
+         count(*) FILTER (WHERE review_status = 'rejected')::int AS rejected,
+         count(DISTINCT player_id) FILTER (WHERE review_status = 'approved')::int AS released
+       FROM drill_submissions
+       WHERE reviewed_by = $1`,
+      [reviewer.id],
+    ),
+    pool.query(
+      `SELECT COALESCE(SUM(v.value::int), 0)::int AS xp
+       FROM drill_submissions ds
+       JOIN drill_submission_drills dsd ON dsd.drill_submission_id = ds.id
+       CROSS JOIN LATERAL jsonb_each_text(dsd.boosts) AS v(key, value)
+       WHERE ds.reviewed_by = $1 AND ds.review_status = 'approved'`,
+      [reviewer.id],
+    ),
+  ]);
+
+  const t = totals.rows[0];
+  return {
+    pending,
+    approved: t.approved,
+    rejected: t.rejected,
+    released: t.released,
+    xpCredited: xp.rows[0].xp,
+  };
+}
+
 export async function reviewSubmission({ submissionId, reviewer, verdict, feedback, verifiedAttributes }) {
   if (verdict !== "approved" && verdict !== "rejected") {
     throw new AppError('verdict must be "approved" or "rejected".', 400, "VALIDATION_ERROR");
