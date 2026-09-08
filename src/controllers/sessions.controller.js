@@ -29,15 +29,13 @@ export async function discardSessionController(req, res) {
 }
 
 export async function submitSessionController(req, res) {
-  const { videoUrl, notes, reviewerName, reviewerCoachId } = req.body;
+  const { videoUrl, notes } = req.body;
   if (!videoUrl) {
     throw new AppError("videoUrl is required.", 400, "VALIDATION_ERROR");
   }
   const session = await sessionsService.submitSession(req.user.id, Number(req.params.id), {
     videoUrl,
     notes,
-    reviewerName,
-    reviewerCoachId,
   });
   res.json({ session });
 }

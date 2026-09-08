@@ -3,8 +3,7 @@ import { AppError } from "../utils/AppError.js";
 
 // Coach onboarding: a coach user submits a club-management request; an admin
 // approves it (provisioning a club into a free slot and linking the coach as
-// its head coach) or declines it. `GET /coaches` is the directory the player's
-// reviewer picker reads.
+// its head coach) or declines it.
 
 function crestFor(name) {
   const letters = (name || "").replace(/[^a-zA-Z]/g, "");
@@ -245,22 +244,3 @@ export async function declineCoachApplication(applicationId, adminUserId, note) 
 }
 
 // The up-to-8 club head coaches, for the player's reviewer picker.
-export async function listCoaches() {
-  const result = await pool.query(
-    `SELECT c.id AS coach_id, c.user_id, c.display_name, u.name AS user_name,
-            cl.id AS club_id, cl.name AS club_name, cl.division
-     FROM coaches c
-     JOIN users u ON u.id = c.user_id
-     JOIN clubs cl ON cl.head_coach_id = c.id AND cl.archived = false
-     WHERE c.is_platform_evaluator = false
-     ORDER BY cl.slot NULLS LAST, cl.name`,
-  );
-  return result.rows.map((row) => ({
-    coachId: row.coach_id,
-    userId: row.user_id,
-    name: row.display_name || row.user_name,
-    clubId: row.club_id,
-    clubName: row.club_name,
-    division: row.division,
-  }));
-}

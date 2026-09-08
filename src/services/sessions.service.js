@@ -299,11 +299,8 @@ export async function discardSession(userId, sessionId) {
 }
 
 // Video upload/storage isn't wired up yet — this accepts a URL for the clip
-// (wherever it ends up being hosted) rather than a file. A player can name a
-// club head coach as reviewer (`reviewerCoachId`); with none, the submission
-// lands in the Platform Evaluator's baseline queue. Phase 4 adds
-// force-routing to the player's club coach when they're on a roster.
-export async function submitSession(userId, sessionId, { videoUrl, notes, reviewerName, reviewerCoachId }) {
+// (wherever it ends up being hosted) rather than a file.
+export async function submitSession(userId, sessionId, { videoUrl, notes }) {
   if (!videoUrl || !videoUrl.trim()) {
     throw new AppError("A video proof URL is required to submit.", 400, "VALIDATION_ERROR");
   }
@@ -316,11 +313,10 @@ export async function submitSession(userId, sessionId, { videoUrl, notes, review
       throw new AppError("Finish the workout before submitting proof.", 409, "SESSION_NOT_COMPLETED");
     }
 
-    let coachId = null;
-    let coachName = null;
-
-    // A player on a club roster: their submissions go to that club's head
-    // coach, no matter what reviewer they name.
+    // Routing is not the player's choice. A player on a club roster is reviewed
+    // by that club's head coach; everyone else — a new player's baseline and
+    // every session an unsigned free agent files — goes to the Platform
+    // Evaluator, which is what reviewer_coach_id = NULL means downstream.
     const rosterCoach = await client.query(
       `SELECT cl.head_coach_id, co.display_name
        FROM club_memberships m
@@ -329,19 +325,8 @@ export async function submitSession(userId, sessionId, { videoUrl, notes, review
        WHERE m.player_id = $1 AND m.active`,
       [session.player_id],
     );
-    if (rosterCoach.rows[0]?.head_coach_id) {
-      coachId = rosterCoach.rows[0].head_coach_id;
-      coachName = rosterCoach.rows[0].display_name;
-    } else if (reviewerCoachId != null) {
-      const coach = await client.query("SELECT id, display_name FROM coaches WHERE id = $1", [
-        reviewerCoachId,
-      ]);
-      if (!coach.rows[0]) {
-        throw new AppError("That coach does not exist.", 400, "VALIDATION_ERROR");
-      }
-      coachId = coach.rows[0].id;
-      coachName = coach.rows[0].display_name;
-    }
+    const coachId = rosterCoach.rows[0]?.head_coach_id ?? null;
+    const coachName = coachId ? rosterCoach.rows[0].display_name : "Platform Evaluator";
 
     const result = await client.query(
       `UPDATE drill_submissions
@@ -349,7 +334,7 @@ export async function submitSession(userId, sessionId, { videoUrl, notes, review
            reviewer_name = $3, reviewer_coach_id = $4
        WHERE id = $5
        RETURNING *`,
-      [videoUrl.trim(), notes || null, coachName || reviewerName || null, coachId, sessionId],
+      [videoUrl.trim(), notes || null, coachName, coachId, sessionId],
     );
     const publicSession = await toPublicSession(client, result.rows[0]);
     await client.query("COMMIT");
