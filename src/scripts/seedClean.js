@@ -6,12 +6,14 @@ import { PLATFORM_EVALUATOR_ORG } from "../utils/roles.js";
 // Reset the database to a clean "fresh deploy" state:
 //   - every user removed (cascades players / coaches / submissions /
 //     memberships / applications), then two staff accounts recreated;
+//   - every club removed (cascades matches / goals / memberships /
+//     applications) — the admin provisions clubs into the 8 slots after
+//     deploy;
 //   - the 10 migration-seeded base drills kept and reactivated, any
 //     admin-created drills removed;
-//   - the two base competitions kept as empty shells, every match / goal
-//     removed;
-//   - the 8 platform club slots reset to their base identities with no head
-//     coach and not archived.
+//   - the two base competitions kept as empty shells (the league and the
+//     cup — the admin can rename / re-season them), every match / goal
+//     removed.
 //
 // Credentials come from the environment (falling back to the two names the
 // project owner asked for):
@@ -40,17 +42,6 @@ for (const [label, pw] of [
   }
 }
 
-const BASE_CLUBS = [
-  { id: 1, name: "Northgate FC", crest: "NGF", slot: 1, division: "Division A" },
-  { id: 2, name: "Riverside United", crest: "RIV", slot: 2, division: "Division A" },
-  { id: 3, name: "Eastside Rangers", crest: "ESR", slot: 3, division: "Division A" },
-  { id: 4, name: "Harbour Athletic", crest: "HAR", slot: 4, division: "Division A" },
-  { id: 5, name: "Kingsway Town", crest: "KIN", slot: 5, division: "Division B" },
-  { id: 6, name: "Meadow Park FC", crest: "MPF", slot: 6, division: "Division B" },
-  { id: 7, name: "Central Wanderers", crest: "CWN", slot: 7, division: "Division B" },
-  { id: 8, name: "Lakeside Rovers", crest: "LKR", slot: 8, division: "Division B" },
-];
-
 const client = await pool.connect();
 try {
   await client.query("BEGIN");
@@ -58,10 +49,21 @@ try {
   console.log("Wiping users, submissions, memberships, applications…");
   await client.query("DELETE FROM users"); // cascades players/coaches/submissions/memberships/apps
 
-  console.log("Clearing matches + goals, keeping the two base competitions…");
+  console.log("Clearing matches + goals, resetting the two base competitions…");
   await client.query("DELETE FROM match_goals");
   await client.query("DELETE FROM matches");
   await client.query("DELETE FROM competitions WHERE id > 2");
+  // Normalise the two shells to neutral names — the admin renames / re-seasons
+  // them from the console.
+  await client.query(
+    `UPDATE competitions SET name = 'OVRX League',  season = '2025/26' WHERE type = 'league'`,
+  );
+  await client.query(
+    `UPDATE competitions SET name = 'OVRX Cup',     season = '2025/26' WHERE type = 'knockout'`,
+  );
+
+  console.log("Removing every club (cascades any remaining matches / goals)…");
+  await client.query("DELETE FROM clubs");
 
   console.log("Resetting the drill catalogue to the 10 base drills…");
   await client.query("DELETE FROM drills WHERE id > 10");
@@ -69,17 +71,6 @@ try {
     `UPDATE drills SET active = true, coach_display_name = NULL,
        completions_count = 0, rating = 0`,
   );
-
-  console.log("Resetting the 8 club slots…");
-  await client.query("DELETE FROM clubs WHERE id > 8");
-  for (const c of BASE_CLUBS) {
-    await client.query(
-      `UPDATE clubs SET name = $2, crest_code = $3, slot = $4, division = $5,
-         head_coach_id = NULL, archived = false, archived_at = NULL
-       WHERE id = $1`,
-      [c.id, c.name, c.crest, c.slot, c.division],
-    );
-  }
 
   console.log("Creating the admin + Platform Evaluator…");
   const adminHash = await bcrypt.hash(adminPassword, 10);
@@ -103,7 +94,7 @@ try {
 
   await client.query("COMMIT");
 
-  console.log("\nDatabase reset. Only these two accounts exist:\n");
+  console.log("\nDatabase reset. No clubs, no matches. Only these two accounts exist:\n");
   console.log(`  ${adminEmail}   (admin · ${adminName})`);
   console.log(`  ${evalEmail}   (Platform Evaluator · ${evalName})`);
   console.log(`\n  admin password:     ${adminPassword}`);
