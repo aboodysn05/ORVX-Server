@@ -5,20 +5,22 @@ import { keysFor, clampAttr } from "../utils/playerRating.js";
 import { recomputeRating, getProfileByUserId } from "./players.service.js";
 import { toPublicSession } from "./sessions.service.js";
 
-// The review / approval loop. A Platform Evaluator (or admin) clears a new
-// player's BASELINE submission; a club coach clears their own squad's
-// submissions (club-coach queue scoping is filled in Phase 4). Approving a
-// submission credits its aggregated drill boosts to the player's attributes
-// (or applies the evaluator's verified values) and recomputes overall/tier —
-// the loop that was completely missing until now.
+// The review / approval loop. Who reviews what is decided by the player's club
+// status, never by the player: a Platform Evaluator (or admin) clears every
+// submission from a player with no club — their baseline and any session they
+// file as an unsigned free agent — while a club coach clears their own squad's.
+// Approving credits the submission's aggregated drill boosts to the player's
+// attributes (on top of any verified card) and recomputes overall/tier.
 
 function isReviewer(user) {
   return user.role === "admin" || isPlatformEvaluator(user);
 }
 
-async function playerHasApprovedSubmission(client, playerId) {
+// A signed player belongs to their club's head coach; an unsigned one — new or
+// released back to the scouting pool — belongs to the Platform Evaluator.
+async function playerIsSigned(client, playerId) {
   const result = await client.query(
-    "SELECT 1 FROM drill_submissions WHERE player_id = $1 AND review_status = 'approved' LIMIT 1",
+    "SELECT 1 FROM club_memberships WHERE player_id = $1 AND active LIMIT 1",
     [playerId],
   );
   return result.rows.length > 0;
@@ -42,12 +44,15 @@ export async function getReviewQueue(reviewer) {
   let where;
   let params = [];
   if (isReviewer(reviewer)) {
+    // The evaluator owns every player who has no club: their baseline, and any
+    // further session an unsigned free agent files. The moment a club signs
+    // them, their submissions route to that club's head coach instead.
     where = `s.status = 'submitted'
        AND s.review_status = 'pending'
        AND s.reviewer_coach_id IS NULL
        AND NOT EXISTS (
-         SELECT 1 FROM drill_submissions a
-         WHERE a.player_id = s.player_id AND a.review_status = 'approved'
+         SELECT 1 FROM club_memberships m
+         WHERE m.player_id = s.player_id AND m.active
        )`;
   } else if (reviewer.coachId != null) {
     where = `s.status = 'submitted' AND s.review_status = 'pending'
@@ -163,8 +168,8 @@ async function countPending(reviewer) {
        WHERE s.status = 'submitted' AND s.review_status = 'pending'
          AND s.reviewer_coach_id IS NULL
          AND NOT EXISTS (
-           SELECT 1 FROM drill_submissions a
-           WHERE a.player_id = s.player_id AND a.review_status = 'approved'
+           SELECT 1 FROM club_memberships m
+           WHERE m.player_id = s.player_id AND m.active
          )`,
     );
     return r.rows[0].n;
@@ -285,10 +290,10 @@ export async function reviewSubmission({ submissionId, reviewer, verdict, feedba
     //  - club coach: only submissions routed to them (reviewer_coach_id).
     if (reviewer.role !== "admin") {
       if (isPlatformEvaluator(reviewer)) {
-        const isBaseline =
+        const unsigned =
           submission.reviewer_coach_id == null &&
-          !(await playerHasApprovedSubmission(client, submission.player_id));
-        if (!isBaseline) {
+          !(await playerIsSigned(client, submission.player_id));
+        if (!unsigned) {
           throw new AppError("A club coach reviews this player's submissions.", 403, "NOT_YOUR_REVIEW");
         }
       } else if (

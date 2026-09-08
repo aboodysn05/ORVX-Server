@@ -10,7 +10,3 @@ export async function myApplicationController(req, res) {
   res.json({ application });
 }
 
-export async function listCoachesController(req, res) {
-  const coaches = await coachesService.listCoaches();
-  res.json({ coaches });
-}
