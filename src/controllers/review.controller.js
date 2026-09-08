@@ -6,6 +6,11 @@ export async function getReviewQueueController(req, res) {
   res.json(result);
 }
 
+export async function getReviewStatsController(req, res) {
+  const stats = await reviewService.getReviewStats(req.currentUser);
+  res.json({ stats });
+}
+
 export async function reviewSubmissionController(req, res) {
   const submissionId = Number(req.params.id);
   if (!Number.isInteger(submissionId)) {
