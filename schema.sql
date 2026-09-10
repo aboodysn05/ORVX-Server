@@ -1,15 +1,29 @@
 --
+-- ORVX — full database schema with real data
+--
+-- Generated from backend/src/db/migrations/*.sql (001-017) followed by
+-- `npm run seed:demo`, so the structure matches the application exactly and
+-- every table is populated with realistic content.
+--
+-- Load into an empty database:
+--     createdb orvx && psql "$DATABASE_URL" -f schema.sql
+--
+-- Demo accounts (all use the password: demo1234)
+--     admin@demo.orvx                                admin
+--     evaluator@demo.orvx                            Platform Evaluator
+--     coach.northgatefc@demo.orvx ... (head coaches) coach
+--     player1@demo.orvx ... player16@demo.orvx       player
+--
+BEGIN;
+--
 -- PostgreSQL database dump
 --
 
 
--- Dumped from database version 18.6 (Homebrew)
--- Dumped by pg_dump version 18.6 (Homebrew)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
 SET idle_in_transaction_session_timeout = 0;
-SET transaction_timeout = 0;
 SET client_encoding = 'UTF8';
 SET standard_conforming_strings = on;
 SELECT pg_catalog.set_config('search_path', '', false);
@@ -621,6 +635,16 @@ ALTER SEQUENCE public.players_id_seq OWNED BY public.players.id;
 
 
 --
+-- Name: schema_migrations; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.schema_migrations (
+    name text NOT NULL,
+    applied_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
 -- Name: session_drills_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
@@ -810,6 +834,512 @@ ALTER TABLE ONLY public.users ALTER COLUMN id SET DEFAULT nextval('public.users_
 
 
 --
+-- Data for Name: attributes; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+INSERT INTO public.attributes VALUES (1, 'pace', 'Pace', 'outfield', '2026-09-10 07:36:39.365041+03');
+INSERT INTO public.attributes VALUES (2, 'shooting', 'Shooting', 'outfield', '2026-09-10 07:36:39.365041+03');
+INSERT INTO public.attributes VALUES (3, 'passing', 'Passing', 'outfield', '2026-09-10 07:36:39.365041+03');
+INSERT INTO public.attributes VALUES (4, 'dribbling', 'Dribbling', 'outfield', '2026-09-10 07:36:39.365041+03');
+INSERT INTO public.attributes VALUES (5, 'defending', 'Defending', 'outfield', '2026-09-10 07:36:39.365041+03');
+INSERT INTO public.attributes VALUES (6, 'physical', 'Physical', 'outfield', '2026-09-10 07:36:39.365041+03');
+INSERT INTO public.attributes VALUES (7, 'diving', 'Diving', 'goalkeeper', '2026-09-10 07:36:39.365041+03');
+INSERT INTO public.attributes VALUES (8, 'handling', 'Handling', 'goalkeeper', '2026-09-10 07:36:39.365041+03');
+INSERT INTO public.attributes VALUES (9, 'kicking', 'Kicking', 'goalkeeper', '2026-09-10 07:36:39.365041+03');
+INSERT INTO public.attributes VALUES (10, 'reflexes', 'Reflexes', 'goalkeeper', '2026-09-10 07:36:39.365041+03');
+INSERT INTO public.attributes VALUES (11, 'speed', 'Speed', 'goalkeeper', '2026-09-10 07:36:39.365041+03');
+INSERT INTO public.attributes VALUES (12, 'positioning', 'Positioning', 'goalkeeper', '2026-09-10 07:36:39.365041+03');
+
+
+--
+-- Data for Name: club_applications; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+INSERT INTO public.club_applications VALUES (1, 1, 7, 'Would love to join — ready to work.', 'pending', NULL, NULL, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.club_applications VALUES (2, 2, 8, 'Would love to join — ready to work.', 'pending', NULL, NULL, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.club_applications VALUES (3, 3, 9, 'Would love to join — ready to work.', 'pending', NULL, NULL, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+
+
+--
+-- Data for Name: club_memberships; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+INSERT INTO public.club_memberships VALUES (1, 1, 13, 'Attacker', true, '2026-09-10 07:37:05.293743+03', NULL, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.club_memberships VALUES (2, 2, 14, 'Defender', true, '2026-09-10 07:37:05.293743+03', NULL, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.club_memberships VALUES (3, 3, 15, 'Goalkeeper', true, '2026-09-10 07:37:05.293743+03', NULL, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.club_memberships VALUES (4, 4, 16, 'Attacker', true, '2026-09-10 07:37:05.293743+03', NULL, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+
+
+--
+-- Data for Name: clubs; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+INSERT INTO public.clubs VALUES (5, 'Kingsway Town', 'KIN', '2026-09-10 07:36:44.902821+03', 5, 'Division B', NULL, false, '2026-09-10 07:37:05.293743+03', NULL);
+INSERT INTO public.clubs VALUES (6, 'Meadow Park FC', 'MPF', '2026-09-10 07:36:44.902821+03', 6, 'Division B', NULL, false, '2026-09-10 07:37:05.293743+03', NULL);
+INSERT INTO public.clubs VALUES (7, 'Central Wanderers', 'CWN', '2026-09-10 07:36:44.902821+03', 7, 'Division B', NULL, false, '2026-09-10 07:37:05.293743+03', NULL);
+INSERT INTO public.clubs VALUES (8, 'Lakeside Rovers', 'LKR', '2026-09-10 07:36:44.902821+03', 8, 'Division B', NULL, false, '2026-09-10 07:37:05.293743+03', NULL);
+INSERT INTO public.clubs VALUES (1, 'Northgate FC', 'NGF', '2026-09-10 07:36:44.902821+03', 1, 'Division A', 2, false, '2026-09-10 07:37:05.293743+03', NULL);
+INSERT INTO public.clubs VALUES (2, 'Riverside United', 'RIV', '2026-09-10 07:36:44.902821+03', 2, 'Division A', 3, false, '2026-09-10 07:37:05.293743+03', NULL);
+INSERT INTO public.clubs VALUES (3, 'Eastside Rangers', 'ESR', '2026-09-10 07:36:44.902821+03', 3, 'Division A', 4, false, '2026-09-10 07:37:05.293743+03', NULL);
+INSERT INTO public.clubs VALUES (4, 'Harbour Athletic', 'HAR', '2026-09-10 07:36:44.902821+03', 4, 'Division A', 5, false, '2026-09-10 07:37:05.293743+03', NULL);
+
+
+--
+-- Data for Name: coach_applications; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+INSERT INTO public.coach_applications VALUES (1, 3, 'Coach Northgate FC', 6, 'UEFA-B-9502', 'Northgate FC', 16, 'https://example.com/licence.pdf', NULL, 'approved', NULL, NULL, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.coach_applications VALUES (2, 4, 'Coach Riverside United', 12, 'UEFA-B-7415', 'Riverside United', 16, 'https://example.com/licence.pdf', NULL, 'approved', NULL, NULL, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.coach_applications VALUES (3, 5, 'Coach Eastside Rangers', 6, 'UEFA-B-7621', 'Eastside Rangers', 16, 'https://example.com/licence.pdf', NULL, 'approved', NULL, NULL, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.coach_applications VALUES (4, 6, 'Coach Harbour Athletic', 9, 'UEFA-B-2989', 'Harbour Athletic', 16, 'https://example.com/licence.pdf', NULL, 'approved', NULL, NULL, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.coach_applications VALUES (5, 7, 'Applicant 1 Coach', 9, 'FA-L2-308', 'Aspiring FC 1', 16, 'https://example.com/licence.pdf', 'https://example.com/crest.png', 'pending', NULL, NULL, NULL, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.coach_applications VALUES (6, 8, 'Applicant 2 Coach', 5, 'FA-L2-971', 'Aspiring FC 2', 16, 'https://example.com/licence.pdf', 'https://example.com/crest.png', 'pending', NULL, NULL, NULL, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+
+
+--
+-- Data for Name: coaches; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+INSERT INTO public.coaches VALUES (1, 2, 'Coach #9', 0, NULL, NULL, NULL, NULL, true, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.coaches VALUES (2, 3, 'Coach Northgate FC', 6, 'UEFA-B-9502', NULL, NULL, NULL, false, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.coaches VALUES (3, 4, 'Coach Riverside United', 12, 'UEFA-B-7415', NULL, NULL, NULL, false, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.coaches VALUES (4, 5, 'Coach Eastside Rangers', 6, 'UEFA-B-7621', NULL, NULL, NULL, false, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.coaches VALUES (5, 6, 'Coach Harbour Athletic', 9, 'UEFA-B-2989', NULL, NULL, NULL, false, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+
+
+--
+-- Data for Name: competitions; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+INSERT INTO public.competitions VALUES (1, 'Premier Development League', 'league', '2025/26', '2026-09-10 07:36:44.902821+03');
+INSERT INTO public.competitions VALUES (2, 'OVRX Cup', 'knockout', '2025/26', '2026-09-10 07:36:44.902821+03');
+
+
+--
+-- Data for Name: drill_attribute_boosts; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+INSERT INTO public.drill_attribute_boosts VALUES (1, 1, 1, 2, '2026-09-10 07:36:40.75449+03');
+INSERT INTO public.drill_attribute_boosts VALUES (2, 2, 4, 2, '2026-09-10 07:36:40.75449+03');
+INSERT INTO public.drill_attribute_boosts VALUES (3, 3, 6, 1, '2026-09-10 07:36:40.75449+03');
+INSERT INTO public.drill_attribute_boosts VALUES (4, 3, 1, 1, '2026-09-10 07:36:40.75449+03');
+INSERT INTO public.drill_attribute_boosts VALUES (5, 4, 3, 2, '2026-09-10 07:36:40.75449+03');
+INSERT INTO public.drill_attribute_boosts VALUES (6, 5, 2, 2, '2026-09-10 07:36:40.75449+03');
+INSERT INTO public.drill_attribute_boosts VALUES (7, 6, 4, 1, '2026-09-10 07:36:40.75449+03');
+INSERT INTO public.drill_attribute_boosts VALUES (8, 6, 1, 1, '2026-09-10 07:36:40.75449+03');
+INSERT INTO public.drill_attribute_boosts VALUES (9, 7, 6, 2, '2026-09-10 07:36:40.75449+03');
+INSERT INTO public.drill_attribute_boosts VALUES (10, 8, 5, 2, '2026-09-10 07:36:40.75449+03');
+INSERT INTO public.drill_attribute_boosts VALUES (11, 9, 3, 1, '2026-09-10 07:36:40.75449+03');
+INSERT INTO public.drill_attribute_boosts VALUES (12, 9, 2, 1, '2026-09-10 07:36:40.75449+03');
+INSERT INTO public.drill_attribute_boosts VALUES (13, 10, 4, 2, '2026-09-10 07:36:40.75449+03');
+
+
+--
+-- Data for Name: drill_submission_drills; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+INSERT INTO public.drill_submission_drills VALUES (1, 1, 2, 1, 'Tight-Space 1v1 Dribbling', 'reps', 4, 3, '{"dribbling": 2}', '[true, true, true, true]', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.drill_submission_drills VALUES (2, 2, 1, 1, 'Cone Slalom Agility Weave', 'reps', 3, 5, '{"pace": 2}', '[true, true, true]', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.drill_submission_drills VALUES (3, 3, 4, 1, 'Wall-Pass Rebound Control', 'reps', 4, 12, '{"passing": 2}', '[true, true, true, true]', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.drill_submission_drills VALUES (4, 4, 6, 1, 'Speed Ladder Quick Feet', 'secs', 4, 20, '{"pace": 1, "dribbling": 1}', '[true, true, true, true]', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.drill_submission_drills VALUES (5, 5, 6, 1, 'Speed Ladder Quick Feet', 'secs', 4, 20, '{"pace": 1, "dribbling": 1}', '[true, true, true, true]', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.drill_submission_drills VALUES (6, 6, 4, 1, 'Wall-Pass Rebound Control', 'reps', 4, 12, '{"passing": 2}', '[true, true, true, true]', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.drill_submission_drills VALUES (7, 7, 6, 1, 'Speed Ladder Quick Feet', 'secs', 4, 20, '{"pace": 1, "dribbling": 1}', '[true, true, true, true]', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.drill_submission_drills VALUES (8, 8, 6, 1, 'Speed Ladder Quick Feet', 'secs', 4, 20, '{"pace": 1, "dribbling": 1}', '[true, true, true, true]', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.drill_submission_drills VALUES (9, 9, 1, 1, 'Cone Slalom Agility Weave', 'reps', 3, 5, '{"pace": 2}', '[true, true, true]', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.drill_submission_drills VALUES (10, 10, 4, 1, 'Wall-Pass Rebound Control', 'reps', 4, 12, '{"passing": 2}', '[true, true, true, true]', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.drill_submission_drills VALUES (11, 11, 1, 1, 'Cone Slalom Agility Weave', 'reps', 3, 5, '{"pace": 2}', '[true, true, true]', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.drill_submission_drills VALUES (12, 12, 2, 1, 'Tight-Space 1v1 Dribbling', 'reps', 4, 3, '{"dribbling": 2}', '[true, true, true, true]', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.drill_submission_drills VALUES (13, 13, 6, 1, 'Speed Ladder Quick Feet', 'secs', 4, 20, '{"pace": 1, "dribbling": 1}', '[true, true, true, true]', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.drill_submission_drills VALUES (14, 14, 2, 1, 'Tight-Space 1v1 Dribbling', 'reps', 4, 3, '{"dribbling": 2}', '[true, true, true, true]', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.drill_submission_drills VALUES (15, 15, 4, 1, 'Wall-Pass Rebound Control', 'reps', 4, 12, '{"passing": 2}', '[true, true, true, true]', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.drill_submission_drills VALUES (16, 16, 3, 1, 'Box-to-Box Sprint Drills', 'secs', 5, 30, '{"pace": 1, "physical": 1}', '[true, true, true, true, true]', '2026-09-10 07:37:05.293743+03');
+
+
+--
+-- Data for Name: drill_submissions; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+INSERT INTO public.drill_submissions VALUES (1, 1, 'Baseline session', 'Baseline', 24, 'submitted', 'https://example.com/clip.mp4', 'Filmed at the training cage.', NULL, 'pending', '2026-09-09 07:37:05.332+03', '2026-09-09 07:37:05.332+03', '2026-09-09 07:37:05.332+03', '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03', NULL, NULL, NULL, NULL);
+INSERT INTO public.drill_submissions VALUES (2, 2, 'Baseline session', 'Baseline', 24, 'submitted', 'https://example.com/clip.mp4', 'Filmed at the training cage.', NULL, 'pending', '2026-09-08 07:37:05.341+03', '2026-09-08 07:37:05.341+03', '2026-09-08 07:37:05.341+03', '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03', NULL, NULL, NULL, NULL);
+INSERT INTO public.drill_submissions VALUES (3, 3, 'Baseline session', 'Baseline', 24, 'submitted', 'https://example.com/clip.mp4', 'Filmed at the training cage.', NULL, 'pending', '2026-09-07 07:37:05.345+03', '2026-09-07 07:37:05.345+03', '2026-09-07 07:37:05.345+03', '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03', NULL, NULL, NULL, NULL);
+INSERT INTO public.drill_submissions VALUES (4, 4, 'Baseline session', 'Baseline', 24, 'submitted', 'https://example.com/clip.mp4', 'Filmed at the training cage.', NULL, 'pending', '2026-09-06 07:37:05.349+03', '2026-09-06 07:37:05.349+03', '2026-09-06 07:37:05.349+03', '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03', NULL, NULL, NULL, NULL);
+INSERT INTO public.drill_submissions VALUES (5, 5, 'Baseline session', 'Baseline', 24, 'submitted', 'https://example.com/clip.mp4', 'Filmed at the training cage.', NULL, 'rejected', '2026-09-07 07:37:05.353+03', '2026-09-07 07:37:05.353+03', '2026-09-07 07:37:05.353+03', '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03', NULL, '2026-09-07 07:37:05.353+03', NULL, NULL);
+INSERT INTO public.drill_submissions VALUES (6, 6, 'Baseline session', 'Baseline', 24, 'submitted', 'https://example.com/clip.mp4', 'Filmed at the training cage.', NULL, 'rejected', '2026-09-06 07:37:05.356+03', '2026-09-06 07:37:05.356+03', '2026-09-06 07:37:05.356+03', '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03', NULL, '2026-09-06 07:37:05.356+03', NULL, NULL);
+INSERT INTO public.drill_submissions VALUES (7, 7, 'Baseline session', 'Baseline', 24, 'submitted', 'https://example.com/clip.mp4', 'Filmed at the training cage.', NULL, 'approved', '2026-09-05 07:37:05.359+03', '2026-09-05 07:37:05.359+03', '2026-09-05 07:37:05.359+03', '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03', NULL, '2026-09-05 07:37:05.359+03', NULL, NULL);
+INSERT INTO public.drill_submissions VALUES (8, 8, 'Baseline session', 'Baseline', 24, 'submitted', 'https://example.com/clip.mp4', 'Filmed at the training cage.', NULL, 'approved', '2026-09-04 07:37:05.361+03', '2026-09-04 07:37:05.361+03', '2026-09-04 07:37:05.361+03', '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03', NULL, '2026-09-04 07:37:05.361+03', NULL, NULL);
+INSERT INTO public.drill_submissions VALUES (9, 9, 'Baseline session', 'Baseline', 24, 'submitted', 'https://example.com/clip.mp4', 'Filmed at the training cage.', NULL, 'approved', '2026-09-03 07:37:05.364+03', '2026-09-03 07:37:05.364+03', '2026-09-03 07:37:05.364+03', '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03', NULL, '2026-09-03 07:37:05.364+03', NULL, NULL);
+INSERT INTO public.drill_submissions VALUES (10, 10, 'Baseline session', 'Baseline', 24, 'submitted', 'https://example.com/clip.mp4', 'Filmed at the training cage.', NULL, 'approved', '2026-09-02 07:37:05.366+03', '2026-09-02 07:37:05.366+03', '2026-09-02 07:37:05.366+03', '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03', NULL, '2026-09-02 07:37:05.366+03', NULL, NULL);
+INSERT INTO public.drill_submissions VALUES (11, 11, 'Baseline session', 'Baseline', 24, 'submitted', 'https://example.com/clip.mp4', 'Filmed at the training cage.', NULL, 'approved', '2026-09-01 07:37:05.368+03', '2026-09-01 07:37:05.368+03', '2026-09-01 07:37:05.368+03', '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03', NULL, '2026-09-01 07:37:05.368+03', NULL, NULL);
+INSERT INTO public.drill_submissions VALUES (12, 12, 'Baseline session', 'Baseline', 24, 'submitted', 'https://example.com/clip.mp4', 'Filmed at the training cage.', NULL, 'approved', '2026-08-31 07:37:05.37+03', '2026-08-31 07:37:05.37+03', '2026-08-31 07:37:05.37+03', '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03', NULL, '2026-08-31 07:37:05.37+03', NULL, NULL);
+INSERT INTO public.drill_submissions VALUES (13, 13, 'Baseline session', 'Baseline', 24, 'submitted', 'https://example.com/clip.mp4', 'Filmed at the training cage.', NULL, 'approved', '2026-08-29 07:37:05.372+03', '2026-08-29 07:37:05.372+03', '2026-08-29 07:37:05.372+03', '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03', NULL, '2026-08-29 07:37:05.372+03', NULL, 2);
+INSERT INTO public.drill_submissions VALUES (14, 14, 'Baseline session', 'Baseline', 24, 'submitted', 'https://example.com/clip.mp4', 'Filmed at the training cage.', NULL, 'approved', '2026-08-28 07:37:05.377+03', '2026-08-28 07:37:05.377+03', '2026-08-28 07:37:05.377+03', '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03', NULL, '2026-08-28 07:37:05.377+03', NULL, 3);
+INSERT INTO public.drill_submissions VALUES (15, 15, 'Baseline session', 'Baseline', 24, 'submitted', 'https://example.com/clip.mp4', 'Filmed at the training cage.', NULL, 'approved', '2026-08-27 07:37:05.379+03', '2026-08-27 07:37:05.379+03', '2026-08-27 07:37:05.379+03', '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03', NULL, '2026-08-27 07:37:05.379+03', NULL, 4);
+INSERT INTO public.drill_submissions VALUES (16, 16, 'Baseline session', 'Baseline', 24, 'submitted', 'https://example.com/clip.mp4', 'Filmed at the training cage.', NULL, 'approved', '2026-08-26 07:37:05.381+03', '2026-08-26 07:37:05.381+03', '2026-08-26 07:37:05.381+03', '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03', NULL, '2026-08-26 07:37:05.381+03', NULL, 5);
+
+
+--
+-- Data for Name: drills; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+INSERT INTO public.drills VALUES (1, 'Cone Slalom Agility Weave', 'reps', 3, 5, 200, NULL, '2026-09-10 07:36:40.75449+03', '2026-09-10 07:37:05.293743+03', 'Intermediate', 'Agility & Feet', NULL, 0, 0.0, 'Eight cones, one metre apart, in a straight line. Ball at the first cone, phone on a tripod square to the run.', 'Weave the full line using both feet, turn at the end and return. Six passes without touching a cone.', 'The full run must stay in frame from first touch to final turn. Cuts void the submission.', 'General', NULL, 1, 20, 1, 300, true, NULL);
+INSERT INTO public.drills VALUES (2, 'Tight-Space 1v1 Dribbling', 'reps', 4, 3, 225, NULL, '2026-09-10 07:36:40.75449+03', '2026-09-10 07:37:05.293743+03', 'Intermediate', 'Close Control', NULL, 0, 0.0, 'A 3x3 metre grid marked with cones, one ball, a passive defender inside the grid.', 'Keep the ball under control against the defender for 30-second bursts, resetting on a loss of possession.', 'The full grid must stay in frame. Log every burst, including resets.', 'General', NULL, 1, 20, 1, 300, true, NULL);
+INSERT INTO public.drills VALUES (3, 'Box-to-Box Sprint Drills', 'secs', 5, 30, 120, NULL, '2026-09-10 07:36:40.75449+03', '2026-09-10 07:37:05.293743+03', 'Elite', 'Endurance & Pace', NULL, 0, 0.0, 'Two markers 40 metres apart on grass or track, camera positioned side-on to capture the full distance.', 'Sprint box-to-box at match intensity, jogging back for recovery between reps.', 'Both markers must be visible throughout. No cutting the distance short.', 'General', NULL, 1, 20, 1, 300, true, NULL);
+INSERT INTO public.drills VALUES (4, 'Wall-Pass Rebound Control', 'reps', 4, 12, 150, NULL, '2026-09-10 07:36:40.75449+03', '2026-09-10 07:37:05.293743+03', 'Beginner', 'Short Passing', NULL, 0, 0.0, 'Chalk a 60cm target on a wall, stand at 8, 12 and 16 metres.', 'Ten passes from each distance, alternating feet, first touch only.', 'Target and player both in frame; the count is audible or on screen.', 'General', NULL, 1, 20, 1, 300, true, NULL);
+INSERT INTO public.drills VALUES (5, 'First-Touch Finishing Volley', 'reps', 3, 8, 200, NULL, '2026-09-10 07:36:40.75449+03', '2026-09-10 07:37:05.293743+03', 'Intermediate', 'Finishing', NULL, 0, 0.0, 'Goal, six balls spread across the edge of the box, one server.', 'One-touch finishes from each position, alternating near and far post calls.', 'Goal frame visible on every strike. Ten seconds maximum between attempts.', 'General', NULL, 1, 20, 1, 300, true, NULL);
+INSERT INTO public.drills VALUES (6, 'Speed Ladder Quick Feet', 'secs', 4, 20, 90, NULL, '2026-09-10 07:36:40.75449+03', '2026-09-10 07:37:05.293743+03', 'Beginner', 'Footwork Speed', NULL, 0, 0.0, 'A standard agility ladder laid flat on grass or turf, camera side-on.', 'Run the full ladder pattern at maximum tempo, resetting to the start for each rep.', 'Full ladder must stay in frame. Missed rungs restart the rep.', 'General', NULL, 1, 20, 1, 300, true, NULL);
+INSERT INTO public.drills VALUES (7, 'Shielding & Shoulder Duels', 'reps', 3, 6, 180, NULL, '2026-09-10 07:36:40.75449+03', '2026-09-10 07:37:05.293743+03', 'Intermediate', 'Ball Protection', NULL, 0, 0.0, 'A five-metre channel, one attacker with the ball, one defender applying pressure from behind.', 'Shield the ball under contact for the full duration of each rep, rotating shoulders to keep the defender out.', 'Contact must stay within the channel. Log a rep only if the ball is retained for its full duration.', 'General', NULL, 1, 20, 1, 300, true, NULL);
+INSERT INTO public.drills VALUES (8, 'Recovery Press & Tackle Angles', 'reps', 4, 6, 165, NULL, '2026-09-10 07:36:40.75449+03', '2026-09-10 07:37:05.293743+03', 'Intermediate', 'Positioning & Tackling', NULL, 0, 0.0, 'A ten metre channel with two cones as the gate, one attacker, one ball.', 'Jockey the attacker across the channel, force the weak side, win the ball inside the gate.', 'Full channel in frame. Six repetitions, alternating sides.', 'General', NULL, 1, 20, 1, 300, true, NULL);
+INSERT INTO public.drills VALUES (9, 'Long-Range Chip Accuracy', 'reps', 3, 10, 200, NULL, '2026-09-10 07:36:40.75449+03', '2026-09-10 07:37:05.293743+03', 'Elite', 'Long Passing', NULL, 0, 0.0, 'A 1-metre target zone at 25 and 35 metres, ball on the ground at the start point.', 'Chip the target zone from each distance, alternating feet, five attempts per distance.', 'Target zone and strike point both in frame for every attempt.', 'General', NULL, 1, 20, 1, 300, true, NULL);
+INSERT INTO public.drills VALUES (10, 'Cruyff Turn Repetition Set', 'reps', 4, 8, 135, NULL, '2026-09-10 07:36:40.75449+03', '2026-09-10 07:37:05.293743+03', 'Beginner', 'Turning & Feints', NULL, 0, 0.0, 'Open space with one cone marking the turn point, camera side-on to the approach and exit.', 'Approach at jogging pace, execute the turn at the cone, accelerate away on the new line.', 'The full turn — approach, contact, exit — must be visible in one continuous take.', 'General', NULL, 1, 20, 1, 300, true, NULL);
+
+
+--
+-- Data for Name: match_goals; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+
+
+--
+-- Data for Name: matches; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+INSERT INTO public.matches VALUES (1, 1, 'Matchday 8', NULL, 8, 1, NULL, NULL, 'scheduled', '2026-09-17 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03');
+INSERT INTO public.matches VALUES (2, 1, 'Matchday 4', NULL, 8, 2, 1, 4, 'played', '2026-07-23 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03');
+INSERT INTO public.matches VALUES (3, 1, 'Matchday 8', NULL, 7, 2, NULL, NULL, 'scheduled', '2026-09-17 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03');
+INSERT INTO public.matches VALUES (4, 1, 'Matchday 5', NULL, 6, 2, 0, 3, 'played', '2026-07-30 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03');
+INSERT INTO public.matches VALUES (5, 1, 'Matchday 6', NULL, 4, 2, 0, 1, 'played', '2026-08-06 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03');
+INSERT INTO public.matches VALUES (6, 1, 'Matchday 7', NULL, 1, 2, 2, 1, 'played', '2026-08-13 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03');
+INSERT INTO public.matches VALUES (7, 1, 'Matchday 4', NULL, 7, 3, 0, 2, 'played', '2026-07-23 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03');
+INSERT INTO public.matches VALUES (8, 1, 'Matchday 8', NULL, 6, 3, NULL, NULL, 'scheduled', '2026-09-17 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03');
+INSERT INTO public.matches VALUES (9, 1, 'Matchday 5', NULL, 5, 3, 1, 1, 'played', '2026-07-30 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03');
+INSERT INTO public.matches VALUES (10, 1, 'Matchday 3', NULL, 2, 3, 2, 0, 'played', '2026-07-16 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03');
+INSERT INTO public.matches VALUES (11, 1, 'Matchday 6', NULL, 1, 3, 1, 1, 'played', '2026-08-06 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03');
+INSERT INTO public.matches VALUES (12, 1, 'Matchday 3', NULL, 8, 4, 0, 3, 'played', '2026-07-16 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03');
+INSERT INTO public.matches VALUES (13, 1, 'Matchday 4', NULL, 6, 4, 1, 2, 'played', '2026-07-23 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03');
+INSERT INTO public.matches VALUES (14, 1, 'Matchday 8', NULL, 5, 4, NULL, NULL, 'scheduled', '2026-09-17 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03');
+INSERT INTO public.matches VALUES (15, 1, 'Matchday 2', NULL, 3, 4, 1, 1, 'played', '2026-07-09 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03');
+INSERT INTO public.matches VALUES (16, 1, 'Matchday 5', NULL, 1, 4, 2, 0, 'played', '2026-07-30 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03');
+INSERT INTO public.matches VALUES (17, 1, 'Matchday 3', NULL, 7, 5, 1, 2, 'played', '2026-07-16 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03');
+INSERT INTO public.matches VALUES (18, 1, 'Matchday 1', NULL, 4, 5, 1, 1, 'played', '2026-07-02 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03');
+INSERT INTO public.matches VALUES (19, 1, 'Matchday 2', NULL, 2, 5, 2, 1, 'played', '2026-07-09 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03');
+INSERT INTO public.matches VALUES (20, 1, 'Matchday 4', NULL, 1, 5, 3, 1, 'played', '2026-07-23 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03');
+INSERT INTO public.matches VALUES (21, 1, 'Matchday 2', NULL, 8, 6, 0, 2, 'played', '2026-07-09 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03');
+INSERT INTO public.matches VALUES (22, 1, 'Matchday 7', NULL, 5, 6, 1, 0, 'played', '2026-08-13 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03');
+INSERT INTO public.matches VALUES (23, 1, 'Matchday 1', NULL, 3, 6, 3, 1, 'played', '2026-07-02 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03');
+INSERT INTO public.matches VALUES (24, 1, 'Matchday 3', NULL, 1, 6, 2, 1, 'played', '2026-07-16 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03');
+INSERT INTO public.matches VALUES (25, 1, 'Matchday 6', NULL, 6, 7, 1, 2, 'played', '2026-08-06 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03');
+INSERT INTO public.matches VALUES (26, 1, 'Matchday 7', NULL, 4, 7, 2, 2, 'played', '2026-08-13 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03');
+INSERT INTO public.matches VALUES (27, 1, 'Matchday 1', NULL, 2, 7, 2, 0, 'played', '2026-07-02 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03');
+INSERT INTO public.matches VALUES (28, 1, 'Matchday 2', NULL, 1, 7, 3, 0, 'played', '2026-07-09 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03');
+INSERT INTO public.matches VALUES (29, 1, 'Matchday 5', NULL, 7, 8, 2, 1, 'played', '2026-07-30 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03');
+INSERT INTO public.matches VALUES (30, 1, 'Matchday 6', NULL, 5, 8, 3, 0, 'played', '2026-08-06 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03');
+INSERT INTO public.matches VALUES (31, 1, 'Matchday 7', NULL, 3, 8, 3, 0, 'played', '2026-08-13 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03');
+INSERT INTO public.matches VALUES (32, 1, 'Matchday 1', NULL, 1, 8, 4, 1, 'played', '2026-07-02 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03');
+INSERT INTO public.matches VALUES (33, 2, 'Quarter-Finals', 2, 8, 1, 1, 2, 'played', '2026-08-27 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03');
+INSERT INTO public.matches VALUES (34, 2, 'Semi-Finals', 2, 6, 1, NULL, NULL, 'scheduled', '2026-09-14 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03');
+INSERT INTO public.matches VALUES (35, 2, 'Quarter-Finals', 2, 7, 2, 1, 1, 'played', '2026-08-27 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03');
+INSERT INTO public.matches VALUES (36, 2, 'Semi-Finals', 1, 3, 2, 1, 1, 'played', '2026-09-03 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03');
+INSERT INTO public.matches VALUES (37, 2, 'Quarter-Finals', 1, 4, 3, 1, 1, 'played', '2026-08-20 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03');
+INSERT INTO public.matches VALUES (38, 2, 'Semi-Finals', 2, 2, 3, NULL, NULL, 'scheduled', '2026-09-14 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03');
+INSERT INTO public.matches VALUES (39, 2, 'Quarter-Finals', 2, 3, 4, 2, 0, 'played', '2026-08-27 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03');
+INSERT INTO public.matches VALUES (40, 2, 'Quarter-Finals', 2, 6, 5, 2, 1, 'played', '2026-08-27 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03');
+INSERT INTO public.matches VALUES (41, 2, 'Quarter-Finals', 1, 5, 6, 0, 0, 'played', '2026-08-20 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03');
+INSERT INTO public.matches VALUES (42, 2, 'Semi-Finals', 1, 1, 6, 2, 1, 'played', '2026-09-03 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03');
+INSERT INTO public.matches VALUES (43, 2, 'Quarter-Finals', 1, 2, 7, 2, 0, 'played', '2026-08-20 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03');
+INSERT INTO public.matches VALUES (44, 2, 'Quarter-Finals', 1, 1, 8, 3, 0, 'played', '2026-08-20 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03', '2026-09-10 07:36:44.902821+03');
+
+
+--
+-- Data for Name: player_attributes; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+INSERT INTO public.player_attributes VALUES (1, 1, 1, 68, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (2, 1, 2, 71, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (3, 1, 3, 66, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (4, 1, 4, 71, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (5, 1, 5, 58, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (6, 1, 6, 57, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (7, 2, 1, 80, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (8, 2, 2, 78, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (9, 2, 3, 60, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (10, 2, 4, 75, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (11, 2, 5, 58, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (12, 2, 6, 57, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (13, 3, 7, 67, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (14, 3, 8, 68, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (15, 3, 9, 65, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (16, 3, 10, 81, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (17, 3, 11, 65, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (18, 3, 12, 68, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (19, 4, 1, 81, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (20, 4, 2, 78, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (21, 4, 3, 75, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (22, 4, 4, 81, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (23, 4, 5, 62, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (24, 4, 6, 69, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (25, 5, 1, 67, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (26, 5, 2, 58, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (27, 5, 3, 60, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (28, 5, 4, 72, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (29, 5, 5, 51, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (30, 5, 6, 69, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (31, 6, 1, 78, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (32, 6, 2, 61, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (33, 6, 3, 76, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (34, 6, 4, 81, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (35, 6, 5, 63, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (36, 6, 6, 75, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (37, 7, 1, 83, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (38, 7, 2, 75, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (39, 7, 3, 77, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (40, 7, 4, 81, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (41, 7, 5, 59, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (42, 7, 6, 63, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (43, 8, 1, 74, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (44, 8, 2, 73, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (45, 8, 3, 78, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (46, 8, 4, 71, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (47, 8, 5, 65, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (48, 8, 6, 58, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (49, 9, 7, 68, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (50, 9, 8, 66, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (51, 9, 9, 57, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (52, 9, 10, 77, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (53, 9, 11, 58, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (54, 9, 12, 60, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (55, 10, 1, 77, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (56, 10, 2, 58, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (57, 10, 3, 68, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (58, 10, 4, 74, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (59, 10, 5, 66, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (60, 10, 6, 57, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (61, 11, 1, 75, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (62, 11, 2, 59, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (63, 11, 3, 71, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (64, 11, 4, 76, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (65, 11, 5, 55, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (66, 11, 6, 57, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (67, 12, 7, 65, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (68, 12, 8, 78, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (69, 12, 9, 59, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (70, 12, 10, 70, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (71, 12, 11, 70, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (72, 12, 12, 80, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (73, 13, 1, 80, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (74, 13, 2, 75, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (75, 13, 3, 71, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (76, 13, 4, 64, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (77, 13, 5, 64, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (78, 13, 6, 75, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (79, 14, 1, 79, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (80, 14, 2, 72, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (81, 14, 3, 77, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (82, 14, 4, 63, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (83, 14, 5, 58, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (84, 14, 6, 67, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (85, 15, 7, 73, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (86, 15, 8, 61, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (87, 15, 9, 71, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (88, 15, 10, 75, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (89, 15, 11, 61, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (90, 15, 12, 79, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (91, 16, 1, 66, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (92, 16, 2, 60, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (93, 16, 3, 73, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (94, 16, 4, 65, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (95, 16, 5, 50, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.player_attributes VALUES (96, 16, 6, 62, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+
+
+--
+-- Data for Name: players; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+INSERT INTO public.players VALUES (1, 9, 'Attacker', 'Both', 170, 83, 65, 'Silver', '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.players VALUES (2, 10, 'Defender', 'Right', 185, 82, 68, 'Silver', '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.players VALUES (3, 11, 'Goalkeeper', 'Left', 178, 79, 69, 'Silver', '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.players VALUES (4, 12, 'Attacker', 'Left', 178, 83, 74, 'Silver', '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.players VALUES (5, 13, 'Attacker', 'Both', 183, 64, 63, 'Bronze', '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.players VALUES (6, 14, 'Defender', 'Right', 185, 84, 72, 'Silver', '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.players VALUES (7, 15, 'Attacker', 'Right', 180, 66, 73, 'Silver', '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.players VALUES (8, 16, 'Defender', 'Left', 190, 80, 70, 'Silver', '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.players VALUES (9, 17, 'Goalkeeper', 'Left', 182, 72, 64, 'Bronze', '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.players VALUES (10, 18, 'Attacker', 'Right', 181, 78, 67, 'Silver', '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.players VALUES (11, 19, 'Defender', 'Right', 191, 77, 66, 'Silver', '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.players VALUES (12, 20, 'Goalkeeper', 'Left', 168, 76, 70, 'Silver', '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.players VALUES (13, 21, 'Attacker', 'Right', 179, 62, 72, 'Silver', '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.players VALUES (14, 22, 'Defender', 'Both', 170, 82, 69, 'Silver', '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.players VALUES (15, 23, 'Goalkeeper', 'Left', 176, 66, 70, 'Silver', '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.players VALUES (16, 24, 'Attacker', 'Left', 185, 77, 63, 'Bronze', '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+
+
+--
+-- Data for Name: schema_migrations; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+INSERT INTO public.schema_migrations VALUES ('001_create_users.sql', '2026-09-10 07:36:37.897007+03');
+INSERT INTO public.schema_migrations VALUES ('002_create_players_and_attributes.sql', '2026-09-10 07:36:39.365041+03');
+INSERT INTO public.schema_migrations VALUES ('003_create_drills.sql', '2026-09-10 07:36:40.75449+03');
+INSERT INTO public.schema_migrations VALUES ('004_create_training_sessions.sql', '2026-09-10 07:36:42.149137+03');
+INSERT INTO public.schema_migrations VALUES ('005_extend_drills_display_fields.sql', '2026-09-10 07:36:43.656683+03');
+INSERT INTO public.schema_migrations VALUES ('006_create_leagues.sql', '2026-09-10 07:36:44.902821+03');
+INSERT INTO public.schema_migrations VALUES ('007_rename_to_domain_language.sql', '2026-09-10 07:36:46.151284+03');
+INSERT INTO public.schema_migrations VALUES ('008_drill_submissions_review_workflow.sql', '2026-09-10 07:36:47.497115+03');
+INSERT INTO public.schema_migrations VALUES ('009_create_coaches.sql', '2026-09-10 07:36:48.854916+03');
+INSERT INTO public.schema_migrations VALUES ('010_expand_clubs_for_coaches.sql', '2026-09-10 07:36:50.152133+03');
+INSERT INTO public.schema_migrations VALUES ('011_create_club_memberships.sql', '2026-09-10 07:36:51.554696+03');
+INSERT INTO public.schema_migrations VALUES ('012_create_club_applications.sql', '2026-09-10 07:36:52.896867+03');
+INSERT INTO public.schema_migrations VALUES ('013_extend_drills_for_admin.sql', '2026-09-10 07:36:54.149711+03');
+INSERT INTO public.schema_migrations VALUES ('014_create_match_goals.sql', '2026-09-10 07:36:55.454667+03');
+INSERT INTO public.schema_migrations VALUES ('015_admin_club_management.sql', '2026-09-10 07:36:56.900158+03');
+INSERT INTO public.schema_migrations VALUES ('016_neutral_drill_authorship.sql', '2026-09-10 07:36:58.154092+03');
+INSERT INTO public.schema_migrations VALUES ('017_match_goal_scorers_and_position_swap.sql', '2026-09-10 07:36:59.497852+03');
+
+
+--
+-- Data for Name: users; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+INSERT INTO public.users VALUES (1, 'Demo Admin', 'admin@demo.orvx', '$2b$10$DG842fJoL1HnpB2TGjR6O.7DtMoa8mcbzxJ4PU7USFwRW68/vNo2O', 'admin', NULL, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.users VALUES (2, 'Coach #9', 'evaluator@demo.orvx', '$2b$10$DG842fJoL1HnpB2TGjR6O.7DtMoa8mcbzxJ4PU7USFwRW68/vNo2O', 'coach', 'Platform Evaluator', '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.users VALUES (3, 'Coach Northgate FC', 'coach.northgatefc@demo.orvx', '$2b$10$DG842fJoL1HnpB2TGjR6O.7DtMoa8mcbzxJ4PU7USFwRW68/vNo2O', 'coach', 'Northgate FC', '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.users VALUES (4, 'Coach Riverside United', 'coach.riversideunited@demo.orvx', '$2b$10$DG842fJoL1HnpB2TGjR6O.7DtMoa8mcbzxJ4PU7USFwRW68/vNo2O', 'coach', 'Riverside United', '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.users VALUES (5, 'Coach Eastside Rangers', 'coach.eastsiderangers@demo.orvx', '$2b$10$DG842fJoL1HnpB2TGjR6O.7DtMoa8mcbzxJ4PU7USFwRW68/vNo2O', 'coach', 'Eastside Rangers', '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.users VALUES (6, 'Coach Harbour Athletic', 'coach.harbourathletic@demo.orvx', '$2b$10$DG842fJoL1HnpB2TGjR6O.7DtMoa8mcbzxJ4PU7USFwRW68/vNo2O', 'coach', 'Harbour Athletic', '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.users VALUES (7, 'Applicant 1', 'applicant1@demo.orvx', '$2b$10$DG842fJoL1HnpB2TGjR6O.7DtMoa8mcbzxJ4PU7USFwRW68/vNo2O', 'coach', 'New Club 1', '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.users VALUES (8, 'Applicant 2', 'applicant2@demo.orvx', '$2b$10$DG842fJoL1HnpB2TGjR6O.7DtMoa8mcbzxJ4PU7USFwRW68/vNo2O', 'coach', 'New Club 2', '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.users VALUES (9, 'Jae Adeyemi', 'player1@demo.orvx', '$2b$10$DG842fJoL1HnpB2TGjR6O.7DtMoa8mcbzxJ4PU7USFwRW68/vNo2O', 'player', NULL, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.users VALUES (10, 'Leo Moreau', 'player2@demo.orvx', '$2b$10$DG842fJoL1HnpB2TGjR6O.7DtMoa8mcbzxJ4PU7USFwRW68/vNo2O', 'player', NULL, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.users VALUES (11, 'Sam Novak', 'player3@demo.orvx', '$2b$10$DG842fJoL1HnpB2TGjR6O.7DtMoa8mcbzxJ4PU7USFwRW68/vNo2O', 'player', NULL, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.users VALUES (12, 'Theo Okonkwo', 'player4@demo.orvx', '$2b$10$DG842fJoL1HnpB2TGjR6O.7DtMoa8mcbzxJ4PU7USFwRW68/vNo2O', 'player', NULL, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.users VALUES (13, 'Kof Boyd', 'player5@demo.orvx', '$2b$10$DG842fJoL1HnpB2TGjR6O.7DtMoa8mcbzxJ4PU7USFwRW68/vNo2O', 'player', NULL, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.users VALUES (14, 'Dane Ferreira', 'player6@demo.orvx', '$2b$10$DG842fJoL1HnpB2TGjR6O.7DtMoa8mcbzxJ4PU7USFwRW68/vNo2O', 'player', NULL, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.users VALUES (15, 'Rui Nunez', 'player7@demo.orvx', '$2b$10$DG842fJoL1HnpB2TGjR6O.7DtMoa8mcbzxJ4PU7USFwRW68/vNo2O', 'player', NULL, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.users VALUES (16, 'Alex Reed', 'player8@demo.orvx', '$2b$10$DG842fJoL1HnpB2TGjR6O.7DtMoa8mcbzxJ4PU7USFwRW68/vNo2O', 'player', NULL, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.users VALUES (17, 'Nico Haddad', 'player9@demo.orvx', '$2b$10$DG842fJoL1HnpB2TGjR6O.7DtMoa8mcbzxJ4PU7USFwRW68/vNo2O', 'player', NULL, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.users VALUES (18, 'Omar Kerr', 'player10@demo.orvx', '$2b$10$DG842fJoL1HnpB2TGjR6O.7DtMoa8mcbzxJ4PU7USFwRW68/vNo2O', 'player', NULL, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.users VALUES (19, 'Bram Vane', 'player11@demo.orvx', '$2b$10$DG842fJoL1HnpB2TGjR6O.7DtMoa8mcbzxJ4PU7USFwRW68/vNo2O', 'player', NULL, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.users VALUES (20, 'Yuki Ito', 'player12@demo.orvx', '$2b$10$DG842fJoL1HnpB2TGjR6O.7DtMoa8mcbzxJ4PU7USFwRW68/vNo2O', 'player', NULL, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.users VALUES (21, 'Ivan Petrov', 'player13@demo.orvx', '$2b$10$DG842fJoL1HnpB2TGjR6O.7DtMoa8mcbzxJ4PU7USFwRW68/vNo2O', 'player', NULL, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.users VALUES (22, 'Cole Webb', 'player14@demo.orvx', '$2b$10$DG842fJoL1HnpB2TGjR6O.7DtMoa8mcbzxJ4PU7USFwRW68/vNo2O', 'player', NULL, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.users VALUES (23, 'Finn Frost', 'player15@demo.orvx', '$2b$10$DG842fJoL1HnpB2TGjR6O.7DtMoa8mcbzxJ4PU7USFwRW68/vNo2O', 'player', NULL, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+INSERT INTO public.users VALUES (24, 'Ade Bello', 'player16@demo.orvx', '$2b$10$DG842fJoL1HnpB2TGjR6O.7DtMoa8mcbzxJ4PU7USFwRW68/vNo2O', 'player', NULL, '2026-09-10 07:37:05.293743+03', '2026-09-10 07:37:05.293743+03');
+
+
+--
+-- Name: attributes_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.attributes_id_seq', 12, true);
+
+
+--
+-- Name: club_applications_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.club_applications_id_seq', 3, true);
+
+
+--
+-- Name: club_memberships_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.club_memberships_id_seq', 4, true);
+
+
+--
+-- Name: clubs_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.clubs_id_seq', 8, true);
+
+
+--
+-- Name: coach_applications_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.coach_applications_id_seq', 6, true);
+
+
+--
+-- Name: coaches_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.coaches_id_seq', 5, true);
+
+
+--
+-- Name: competitions_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.competitions_id_seq', 2, true);
+
+
+--
+-- Name: drill_attribute_boosts_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.drill_attribute_boosts_id_seq', 13, true);
+
+
+--
+-- Name: drills_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.drills_id_seq', 10, true);
+
+
+--
+-- Name: fixtures_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.fixtures_id_seq', 44, true);
+
+
+--
+-- Name: match_goals_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.match_goals_id_seq', 1, false);
+
+
+--
+-- Name: player_attributes_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.player_attributes_id_seq', 96, true);
+
+
+--
+-- Name: players_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.players_id_seq', 16, true);
+
+
+--
+-- Name: session_drills_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.session_drills_id_seq', 16, true);
+
+
+--
+-- Name: training_sessions_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.training_sessions_id_seq', 16, true);
+
+
+--
+-- Name: users_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.users_id_seq', 24, true);
+
+
+--
 -- Name: attributes attributes_code_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -975,6 +1505,14 @@ ALTER TABLE ONLY public.players
 
 ALTER TABLE ONLY public.players
     ADD CONSTRAINT players_user_id_key UNIQUE (user_id);
+
+
+--
+-- Name: schema_migrations schema_migrations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.schema_migrations
+    ADD CONSTRAINT schema_migrations_pkey PRIMARY KEY (name);
 
 
 --
@@ -1361,4 +1899,4 @@ ALTER TABLE ONLY public.drill_submissions
 -- PostgreSQL database dump complete
 --
 
-
+COMMIT;
